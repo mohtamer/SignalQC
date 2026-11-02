@@ -1,0 +1,17 @@
+Package: RCTC
+Type: Package
+Title: The Rotated Combination of Two-Component Ground Motions
+Version: 0.1.0
+Authors@R: person("Pengfei", "Wang", email = "wltcwpf@gmail.com", role = c("aut", "cre"))
+URL: https://github.com/wltcwpf/RCTC
+BugReports: https://github.com/wltcwpf/RCTC/issues
+Description: The Rotated Combination of Two-Component Ground Motions and their related functions
+License: MIT + file LICENSE
+LazyData: TRUE
+Imports: Rcpp, stats, pracma
+RoxygenNote: 6.0.1.9000
+LinkingTo: Rcpp
+NeedsCompilation: yes
+Packaged: 2018-01-05 01:09:32 UTC; PFW
+Author: Pengfei Wang [aut, cre]
+Maintainer: Pengfei Wang <wltcwpf@gmail.com>

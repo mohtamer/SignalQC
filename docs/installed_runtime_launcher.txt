@@ -1,0 +1,66 @@
+OPTIONAL LAUNCHER: INSTALLED PYTHON AND R
+
+Use this when the normal bundled launchers cannot be used on an organisation's
+computer. Keep the complete application folder, including runtime/setup_packages.
+
+1. Run "Launch SignalQC - Installed Python and R.py" using their installed
+   Python interpreter, for example with the green Run button in PyCharm.
+2. In the setup window, paste or browse to their python.exe and Rscript.exe.
+   Rscript.exe is usually in C:\Program Files\R\R-<version>\bin.
+3. Click "Set up and open SignalQC". Internet access is needed on first use.
+   The launcher installs and checks the Python and R packages, then opens
+   the app. No waveform processing starts automatically.
+4. Use this same additional launcher next time. It remembers the paths and
+   reuses the checked packages instead of downloading them again.
+
+If preferred, paths can also be pasted into the PYTHON_EXE and RSCRIPT_EXE
+lines near the top of the new .py file. No --python arguments or PyCharm run
+configuration are needed for the setup window. If that Python lacks Tkinter,
+the launcher offers the same path selection as text prompts in its console.
+
+The original Launch SignalQC.cmd, Launch SignalQC.py and Launch SignalQC.pyw
+remain the normal, offline-ready choices. They still use the bundled runtimes.
+
+WHAT SETUP DOES
+- Uses the selected installed executables directly; it does not copy/install
+  Python or R, request elevation, or change their system package folders.
+- Installs a separate package environment under the user's local SignalQC
+  settings folder, normally %LOCALAPPDATA%\SignalQC\installed-runtimes.
+- Installs the complete pinned Python dependency set for the selected version
+  from PyPI. Only binary wheels are accepted; it does not install a compiler.
+- Installs the required R packages/dependencies from CRAN and Bioconductor
+  into private libraries. Versions are chosen for the installed R and recorded
+  in validated_*_versions.tsv inside the environment's R-library folder.
+- Installs the included RCTC 0.1.0 package for filtering and RCTC 0.2.4 for
+  intensity measures into separate libraries, preserving the existing methods.
+- Checks all 40 pinned Python package versions, scientific/interface imports,
+  all 51 required R packages, RotD routines and the R-to-Python connection.
+- Starts the app only after validation succeeds. Each processing worker uses
+  the selected Python/R and private libraries. Existing project runtime paths
+  are overridden for this session; data paths and scientific settings are not.
+- Runtime fields are read-only during this session. Change them by reopening
+  the installed-runtime launcher. Setup does not run scientific processing.
+- Saves setup progress/errors in setup.log. An interrupted setup can be retried.
+
+COMPATIBILITY AND INTERNET
+The setup accepts standard 64-bit Windows x64 CPython 3.11-3.14 and R 4.5 or
+later, provided compatible packages are available and the checks succeed.
+Embedded/isolated Python and free-threaded builds are not supported here.
+The reference environment remains Python 3.12.14 with R 4.5.1; the first-run
+installation, saved setup reuse and actual app startup were also checked using
+separate CPython 3.13.7 and the installed R 4.5.1. This does not certify all
+future runtime/package versions or numerical equivalence on every environment.
+No full waveform processing was run as part of these installer checks.
+
+First setup downloads several hundred megabytes and can take several minutes.
+It requires access to pypi.org/files.pythonhosted.org, cloud.r-project.org and
+Bioconductor's repositories/mirrors. Proxy/network restrictions may require IT
+assistance. TLS checks remain enabled. Setup does not bypass IT restrictions:
+the installed Python/R and compiled package libraries must be permitted.
+If compatible binaries cannot be installed or loaded, setup stops with a log;
+it does not silently use bundled executables or start with missing packages.
+
+Official dependency installation references:
+https://pip.pypa.io/en/stable/cli/pip_install/
+https://stat.ethz.ch/R-manual/R-devel/library/utils/html/install.packages.html
+https://bioconductor.org/install/

@@ -1,0 +1,323 @@
+"""Non-computational I/O for Main_AutoFC_v12_app.R.
+
+Signal filtering is performed only in the R main and its original dependencies.
+This module joins exact trace identities, repairs metadata and persists R results.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import os
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+
+import h5py
+import numpy as np
+import pandas as pd
+from obspy.geodetics import gps2dist_azimuth
+
+
+def _text(v):
+    return v.decode("utf-8") if isinstance(v, bytes) else str(v)
+
+
+def _number(v):
+    try:
+        value = float(v)
+        return value if math.isfinite(value) and value != -999 else float("nan")
+    except (ValueError, TypeError):
+        return float("nan")
+
+
+def _bool(v):
+    return _text(v).strip().lower() in ("true", "1", "yes", "accepted", "accept")
+
+
+def _time(v):
+    s = _text(v).strip().replace(" ", "T")
+    try:
+        # Preserve all nine fractional digits for legacy identity comparisons.
+        fractional = re.search(r"\d{2}:\d{2}:\d{2}(\.\d+)?", s)
+        digits = (fractional.group(1) or ".0")[1:] if fractional else "0"
+        without_fraction = re.sub(r"(?<=\d{2}:\d{2}:\d{2})\.\d+", "", s)
+        dt = datetime.fromisoformat(without_fraction.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S") + "." + digits.ljust(9, "0") + "Z"
+    except ValueError:
+        return s
+
+
+def _shift_time(value, offset_seconds):
+    canonical = _time(value)
+    if not re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{9}Z", canonical):
+        raise ValueError("Invalid precise timestamp")
+    dt = datetime.fromisoformat(canonical[:19]).replace(tzinfo=timezone.utc)
+    total_ns = int(dt.timestamp()) * 1_000_000_000 + int(canonical[20:29]) + round(float(offset_seconds) * 1_000_000_000)
+    seconds, nanoseconds = divmod(total_ns, 1_000_000_000)
+    return datetime.fromtimestamp(seconds, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S") + f".{nanoseconds:09d}Z"
+
+
+def _timestamp_ns(value):
+    canonical = _time(value)
+    dt = datetime.fromisoformat(canonical[:19]).replace(tzinfo=timezone.utc)
+    return int(dt.timestamp()) * 1_000_000_000 + int(canonical[20:29])
+
+
+def _group_records(frame):
+    """Group compatible components within one sample, preserving exact keys.
+
+    This follows Stage 1's tolerance; duplicate components and unequal rates
+    are separate records. No waveform is shifted or interpolated here.
+    """
+    buckets, result = {}, {}
+    for index, row in frame.iterrows():
+        base = tuple(str(row[field]) for field in ("event_id", "network", "station", "location")) + (str(row.component)[:2],)
+        try:
+            timestamp = _timestamp_ns(row["starttime.s"])
+            dt = _number(row.timeStep)
+            if not math.isfinite(dt) or dt <= 0:
+                raise ValueError("Invalid sampling interval")
+            clusters = buckets.setdefault(base, [])
+            match = next((c for c in clusters if len(c["components"]) < 3 and str(row.component) not in c["components"] and
+                          math.isclose(c["dt"], dt, rel_tol=1e-10) and abs(c["start"] - timestamp) <= round(dt * 1e9)), None)
+            if match is None:
+                match = dict(start=timestamp, dt=dt, components=set(), group="||".join(base) + f"||{timestamp}||{len(clusters)}")
+                clusters.append(match)
+            match["components"].add(str(row.component))
+            result[index] = match["group"]
+        except (ValueError, TypeError):
+            result[index] = "||".join(base) + "||invalid_time||" + str(index)
+    return pd.Series(result)
+
+
+def prepare_metadata(h5_path, meta_path, output_dir):
+    """Normalize Stage 1 table; source HDF5 attributes are authoritative.
+
+    A missing exact key is matched only if NSLC and precise time select ONE trace.
+    Ambiguity is an error on that row, never a first-candidate selection.
+    """
+    meta_path = str(meta_path)
+    df = (pd.read_excel(meta_path, dtype=object) if meta_path.lower().endswith((".xlsx", ".xls"))
+          else pd.read_csv(meta_path, dtype=object, keep_default_na=False))
+    aliases = {"event_id": ["eventid"], "component": ["channel"], "timeStep": ["dt", "delta"],
+               "trace_id": ["trace.id", "trace"], "starttime.s": ["record_start_time", "start_time"],
+               "acrjfinal3": ["accepted", "acrjfinal"], "hypdis": ["hypocentral_distance_km"],
+               "epidis": ["epicentral_distance_km"], "parr": ["p_arrival", "PStart"]}
+    for col in list(df.columns):
+        clean = str(col).removeprefix("meta.").removesuffix(".acfilename.")
+        if clean not in df:
+            df[clean] = df[col]
+    for dest, names in aliases.items():
+        if dest not in df:
+            for name in names:
+                if name in df:
+                    df[dest] = df[name]
+                    break
+    for required in ("event_id", "station", "component", "acrjfinal3", "parr"):
+        if required not in df:
+            raise ValueError(f"Stage 1 metadata is missing {required!r}")
+    df = df.loc[df.acrjfinal3.map(_bool)].copy()
+    for name in ("trace_id", "network", "location", "starttime.s", "metadata_error"):
+        if name not in df:
+            df[name] = ""
+    for name in ("magnitude", "hypdis", "epidis", "timeStep", "count"):
+        if name not in df:
+            df[name] = float("nan")
+    df["filename"] = str(Path(h5_path).resolve())
+    df["source_file"] = str(Path(h5_path).resolve())
+    with h5py.File(h5_path, "r") as hf:
+        for index, row in df.iterrows():
+            try:
+                event_id = str(row.event_id)
+                if event_id not in hf:
+                    raise ValueError(f"Event {event_id!r} is absent from HDF5")
+                event = hf[event_id]
+                key = _text(row.trace_id)
+                if key not in event:
+                    candidates = []
+                    for candidate, group in event.items():
+                        if not isinstance(group, h5py.Group):
+                            continue
+                        at = group.attrs
+                        if (_text(at.get("station", "")) != str(row.station) or
+                                _text(at.get("channel", "")) != str(row.component)):
+                            continue
+                        if str(row.network) and _text(at.get("network", "")) != str(row.network):
+                            continue
+                        if str(row.location) and _text(at.get("location", "")) != str(row.location):
+                            continue
+                        if str(row["starttime.s"]) and _time(at.get("start_time", "")) != _time(row["starttime.s"]):
+                            continue
+                        candidates.append(candidate)
+                    if len(candidates) != 1:
+                        raise ValueError(f"Trace identity is missing/ambiguous ({len(candidates)} matches); regenerate Stage 1 metadata")
+                    key = candidates[0]
+                trace = event[key]
+                at = trace.attrs
+                if _text(at.get("station", "")) != str(row.station) or _text(at.get("channel", "")) != str(row.component):
+                    raise ValueError("Exact trace key conflicts with station/channel metadata")
+                for field, attr in (("network", "network"), ("location", "location"), ("starttime.s", "start_time")):
+                    df.at[index, field] = _text(at.get(attr, row[field]))
+                df.at[index, "trace_id"] = key
+                rate = _number(at.get("sampling_rate"))
+                df.at[index, "timeStep"] = 1 / rate if rate > 0 else _number(row.timeStep)
+                if "acceleration_waveform" not in trace:
+                    raise ValueError("Response-corrected acceleration_waveform is absent")
+                df.at[index, "count"] = len(trace["acceleration_waveform"])
+                magnitude = _number(event.attrs.get("magnitude"))
+                if math.isfinite(magnitude):
+                    df.at[index, "magnitude"] = magnitude
+                coords = [_number(at.get("latitude")), _number(at.get("longitude")),
+                          _number(event.attrs.get("latitude")), _number(event.attrs.get("longitude"))]
+                if all(map(math.isfinite, coords)):
+                    repi = gps2dist_azimuth(*coords)[0] / 1000
+                    df.at[index, "epidis"] = repi
+                    depth = _number(event.attrs.get("depth"))
+                    elevation = _number(at.get("elevation", at.get("elevation_m")))
+                    if not math.isfinite(elevation) or abs(elevation) > 10000:
+                        elevation = float("nan")
+                    if math.isfinite(depth) and math.isfinite(elevation):
+                        df.at[index, "hypdis"] = math.hypot(repi, depth + elevation / 1000)
+                    else:
+                        df.at[index, "hypdis"] = _number(at.get("hypocentral_distance_km"))
+                else:
+                    # The old hypdis column may actually contain epicentral distance.
+                    # Accept only a distance explicitly stored under its physical name.
+                    df.at[index, "epidis"] = _number(at.get("epicentral_distance_km"))
+                    df.at[index, "hypdis"] = _number(at.get("hypocentral_distance_km"))
+                for name in ("magnitude", "hypdis", "parr", "timeStep", "count"):
+                    val = _number(df.at[index, name])
+                    df.at[index, name] = val
+                    if not math.isfinite(val):
+                        raise ValueError(f"Missing/invalid {name}; provide event/station metadata before filtering")
+            except Exception as exc:
+                df.at[index, "metadata_error"] = str(exc)
+    df["trace.id"] = df.trace_id
+    df["rec_id"] = [f"row_{i}" for i in range(len(df))]
+    df["group_id"] = _group_records(df)
+    df["acrjfinal"] = True
+    valid = df.metadata_error.eq("")
+    df = pd.concat([df.loc[valid].drop_duplicates(subset=["event_id", "trace_id"], keep="first"), df.loc[~valid]]).sort_index()
+    target = Path(output_dir) / "normalized_stage1.csv"
+    df.to_csv(target, index=False)
+    return str(target)
+
+
+def read_acceleration(h5_path, event_id, trace_id):
+    with h5py.File(h5_path, "r") as hf:
+        group = hf[str(event_id)][str(trace_id)]
+        data = group["acceleration_waveform"]
+        unit = _text(data.attrs.get("units", group.attrs.get("acceleration_units", "m/s^2"))).lower().replace(" ", "")
+        factors = {"m/s^2": 1, "m/s2": 1, "m/s²": 1, "m/s/s": 1,
+                   "cm/s^2": .01, "cm/s2": .01, "cm/s²": .01, "cm/s/s": .01,
+                   "gal": .01, "g": 9.80665, "mg": .00980665}
+        if unit not in factors:
+            raise ValueError(f"Unrecognized acceleration units {unit!r}")
+        return np.asarray(data, dtype=float) * factors[unit]
+
+
+def run_signature(h5_path, metadata_path, config_json):
+    signature = hashlib.sha256()
+    for path in (Path(h5_path), Path(metadata_path)):
+        stat = path.stat()
+        signature.update(f"{path.resolve()}|{stat.st_size}|{stat.st_mtime_ns}".encode())
+    config = json.loads(config_json)
+    for key in ("resume", "workers", "output_dir"):
+        config.pop(key, None)
+    signature.update(json.dumps(config, sort_keys=True).encode())
+    engine = Path(__file__).parent
+    active = ("Main_AutoFC_v12_app.R", "stage2_io.py", "autofc_v2_app.R", "autoparr.R", "Baseline.r", "DC.mean.r",
+              "fbutter.r", "FAS.r", "Filter.r", "Integrate2VD.r", "Taper.r", "windows.r", "SMOOTH.r",
+              "hk_nn_wrapper.R", "hk_nn.py", "autofc_option7_matlab_v2_app.R", "period_NGA.dat")
+    dependencies = [engine / name for name in active] + sorted((engine / "Option 7").glob("*.m")) + sorted((engine / "RCTC" / "src").glob("*.cpp"))
+    for path in dependencies:
+        signature.update(path.read_bytes())
+    return signature.hexdigest()
+
+
+def is_complete(path, event_id, trace_id, signature):
+    if not Path(path).exists():
+        return False
+    try:
+        with h5py.File(path, "r") as hf:
+            gr = hf[str(event_id)][str(trace_id)]
+            return (_text(gr.attrs.get("processing_signature", "")) == signature and
+                    bool(gr.attrs.get("stage2_complete", False)) and
+                    all(name in gr for name in ("acceleration_waveform", "velocity_waveform", "displacement_waveform")))
+    except (OSError, KeyError):
+        return False
+
+
+def write_processed(source, destination, event_id, trace_id, acceleration_g, velocity_cms, displacement_cm,
+                    dt, first_sample_index, metadata_json, signature):
+    """Persist exact returned R arrays (unit conversion only), transaction per trace."""
+    arrays = [np.asarray(v, dtype=float).reshape(-1) for v in (acceleration_g, velocity_cms, displacement_cm)]
+    if len({len(a) for a in arrays}) != 1 or not all(np.isfinite(a).all() for a in arrays):
+        raise ValueError("Filtered A/V/D arrays must have equal length and finite values")
+    md = json.loads(metadata_json)
+    event_id, trace_id = str(event_id), str(trace_id)
+    with h5py.File(source, "r") as src, h5py.File(destination, "a") as out:
+        out.attrs["schema"] = "signalqc.processed.v1"
+        out.attrs["source_hdf5"] = str(Path(source).resolve())
+        event = out.require_group(event_id)
+        for key, val in src[event_id].attrs.items():
+            event.attrs[key] = val
+        pending = "__pending_" + hashlib.sha256(trace_id.encode()).hexdigest()[:20]
+        if pending in event:
+            del event[pending]
+        group = event.create_group(pending)
+        for key, val in src[event_id][trace_id].attrs.items():
+            group.attrs[key] = val
+        group.attrs["original_start_time"] = group.attrs.get("start_time", "")
+        for attr in ("start_time_ns", "end_time", "end_time_ns", "npts"):
+            if attr in group.attrs:
+                group.attrs["original_" + attr] = group.attrs[attr]
+        group.attrs["trim_start_sample"] = int(first_sample_index)
+        group.attrs["sampling_rate"] = 1 / float(dt)
+        group.attrs["npts"] = len(arrays[0])
+        start = _text(group.attrs.get("start_time", ""))
+        try:
+            group.attrs["start_time"] = _shift_time(start, int(first_sample_index) * float(dt))
+            group.attrs["end_time"] = _shift_time(start, (int(first_sample_index) + len(arrays[0]) - 1) * float(dt))
+            group.attrs["original_start_time_ns"] = _timestamp_ns(start)
+            group.attrs["start_time_ns"] = _timestamp_ns(group.attrs["start_time"])
+            group.attrs["end_time_ns"] = _timestamp_ns(group.attrs["end_time"])
+        except ValueError:
+            pass
+        group.attrs["processing_engine"] = "Main_AutoFC_v12_app.R"
+        group.attrs["processing_signature"] = signature
+        group.attrs["original_trace_id"] = trace_id
+        group.attrs["processing_metadata_json"] = json.dumps(md, ensure_ascii=False)
+        for field in ("fcHP", "fcLP", "windowStart", "windowEnd", "magnitude", "epidis", "hypdis", "PStart", "SStart", "SEnd", "CStart", "acrjfinal", "rejectreason3filter"):
+            if field in md and md[field] is not None:
+                group.attrs[field] = md[field]
+        for name, values, scale, unit, original_unit in zip(
+                ("acceleration_waveform", "velocity_waveform", "displacement_waveform"), arrays,
+                (9.80665, .01, .01), ("m/s^2", "m/s", "m"), ("g", "cm/s", "cm")):
+            dataset = group.create_dataset(name, data=values * scale, compression="gzip", shuffle=True)
+            dataset.attrs["units"] = unit
+            dataset.attrs["engine_units"] = original_unit
+        group.attrs["acceleration_units"] = "m/s^2"
+        group.attrs["stage2_complete"] = True
+        out.flush()
+        if trace_id in event:
+            del event[trace_id]
+        event.move(pending, trace_id)
+        out.flush()
+    return str(destination)
+
+
+def atomic_export(csv_path, xlsx_path):
+    frame = pd.read_csv(csv_path, dtype={"location": str, "network": str, "station": str, "event_id": str, "trace_id": str}, keep_default_na=False)
+    temporary = str(xlsx_path) + ".partial.xlsx"
+    frame.to_excel(temporary, index=False)
+    os.replace(temporary, xlsx_path)
+    return str(xlsx_path)
+
+
+def replace_checkpoint(temporary, target):
+    os.replace(temporary, target)
+    return str(target)

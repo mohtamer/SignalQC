@@ -1,0 +1,33 @@
+SignalQC public preview — 26 October 2026
+
+Example verified: event 20130511_020812 (11 May 2013, 02:08:12 UTC).
+Reference environment: bundled Windows 64-bit Python 3.12.14 and R 4.5.1.
+
+The example was run through accept/reject, filtering, sanity checks and all
+intensity-measure groups using the public edition's supplied settings.
+18 components accepted at Stage 1; 18 filtered; 12 sanity passes and 6 failures.
+RotD50 and RotD100 contain computed results for all six horizontal pairs.
+
+The packaged references were checked against the completed run:
+- 1,710 consolidated result cells
+- 54 waveform datasets, containing 1,678,122 samples
+- 9,420 intensity-measure cells
+Scientific workbook cells were preserved exactly during path conversion.
+Reference HDF5 arrays were preserved; only the input-file location was made relative.
+The comparison detects a deliberately altered waveform in a separate test copy.
+
+Stage 1 decisions, final QC outcomes, corner frequencies and trimming windows
+also agree with the earlier May 2013 demonstration within the stated tolerance.
+
+Public GUI checks covered loading sample inputs, reading the one-event catalogue
+and three-station sheet, input scan with no preflight errors, opening all three
+processed waveform plots from a result row, and opening its diagnostic figure.
+The portable launcher passed its Python dependency check.
+
+No processing equations or active scientific engine files were changed for this
+public preparation. The metadata worksheet binding was corrected so an omitted
+worksheet selects the first sheet, allowing station ADC resolution to be read.
+
+This validation covers the included event and runtime. Different input formats,
+interpreter/package versions and organizational security policies may require
+additional checks; see the README and sample guide.

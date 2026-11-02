@@ -1,0 +1,71 @@
+AUTOMATIC SETUP IS NOW AVAILABLE
+For the simpler first-run alternative, open
+"Launch SignalQC - Installed Python and R.py" using the installed Python.
+Choose both executable paths and click Set up and open SignalQC.
+See installed_runtime_launcher.txt. Internet is required for first setup.
+
+The following manual --python instructions remain available, but that manual
+mode does not install dependencies automatically.
+
+Using Python and R already approved by your organisation
+
+The normal launchers use the complete included Python/R environment. No package
+installation or download is needed in that mode. Use the following alternative
+only when IT requires an approved installation instead of the included runtimes.
+
+Python: selecting an approved interpreter in PyCharm
+1. Open Launch SignalQC.py in PyCharm.
+2. Open Run > Edit Configurations. Select Launch SignalQC. If absent, add a
+   Python configuration and choose Launch SignalQC.py as its script.
+3. Choose the approved installation under Python interpreter.
+4. In Parameters (also called Script parameters), type --python followed by
+   the full path to that same python.exe, enclosed in double quotes.
+   Example ONLY: --python "C:\Program Files\Python312\python.exe"
+   Replace this example with the actual interpreter path on the computer.
+5. Apply the settings and run this configuration.
+
+The --python text is a launch argument; it is not a line to find/edit in the
+launcher source. Selecting PyCharm's interpreter alone does not override the
+app's normal preference for its included environment.
+
+Without PyCharm, an IT technician can run the approved interpreter directly:
+"C:\actual\python.exe" "C:\actual\SignalQC\Launch SignalQC.py" --python "C:\actual\python.exe"
+These paths are placeholders. The equivalent environment setting is
+SIGNALQC_PYTHON, containing the full approved python.exe path.
+
+R: after the interface opens
+1. Open or create the project you will use.
+2. Open Runtime settings in the left sidebar.
+3. Set Python executable to the same approved Python selected above.
+4. Set Rscript executable to Rscript.exe from the approved R installation,
+   for example C:\Program Files\R\R-4.5.1\bin\Rscript.exe.
+5. Click Check runtime availability. Resolve any missing/failed dependencies
+   before processing. These checks do not replace a complete processing test
+   in a newly configured external environment.
+
+ALL PACKAGES MATTER
+- An ordinary Python/R installation is not a complete SignalQC environment.
+- The included Python 3.12.14 packages are in runtime\python\Lib\site-packages.
+  Their exact versions are listed in runtime\requirements-portable.lock.txt.
+  Do not copy Python 3.12 compiled packages into Python 3.11, 3.13 or 3.14.
+- A separately prepared Python 3.11 environment uses requirements-python311.txt.
+  Scientific execution under arbitrary later versions is not guaranteed.
+  Testing the launcher under 3.13/3.14 only verifies that it can select/start
+  the included Python 3.12 environment.
+- Included R packages are in runtime\R-library and runtime\R-IM-library,
+  prepared with 64-bit R 4.5.1. The app still prefers these package folders
+  when you select a different Rscript.exe. A different R version must be
+  checked for binary compatibility; selecting Rscript does not install packages.
+- Filtering uses RCTC 0.1.0. Intensity measures use RCTC 0.2.4, including the
+  RotD spectral routines. Keep the separate libraries and both versions.
+- All processing stages, models and both package libraries must remain with
+  the app. Guo uses Python; MATLAB and PyCharm are not processing requirements.
+
+Normal startup and --python do NOT automatically install missing packages.
+If an approved external environment lacks them, IT must prepare a compatible
+complete environment before use. Application-control rules may also apply to
+compiled package DLLs even when the Python/R executable itself is permitted.
+Ask IT to approve these components; a launcher cannot override an IT block.
+
+PyCharm configuration reference:
+https://www.jetbrains.com/help/pycharm/run-debug-configuration-python.html

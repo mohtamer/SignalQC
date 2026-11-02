@@ -1,0 +1,56 @@
+# May 2013 example
+
+This example contains one earthquake, **11 May 2013 at 02:08:12 UTC** (event `20130511_020812`, magnitude 6.3 Mwp). It includes 18 components: E, N and Z for the HH and HN channels at stations **AE.AJN, AE.ALN and AE.MSF**.
+
+## Run it
+
+1. Extract the complete app folder and open **Launch SignalQC.cmd**, or use one of the Python launchers described in the main README.
+2. Select **Process existing HDF5 files** → **Input data** → **Use included sample inputs**.
+3. Save the project in a **new empty local folder outside this test folder**.
+4. Open **Review and run**, scan the inputs, then start. Keep the sample settings unchanged.
+5. In **Results**, click **Compare sample results** and select your new project folder. Click **View sample reference results** to browse the supplied results without processing.
+
+The Reader can also open either supplied HDF5 directly. Running the example does not overwrite the reference files.
+
+## Expected outcomes
+
+| Step | Expected result |
+|---|---|
+| Input | 1 earthquake, 3 stations, 18 waveform components |
+| Stage 1: accept/reject | 18 accepted, 0 rejected |
+| Stage 2: filtering | 18 components processed |
+| Stage 3: sanity checks | 12 pass, 6 fail |
+| Intensity measures | 6 three-component recording groups, including RotD50 and RotD100 for all 6 horizontal pairs |
+
+The sample demonstrates both final QC outcomes, but **no Stage 1 rejections**. The six failed components fail check 7; one also fails check 3. Check 5 is disabled. IMs are computed for all processed records, including flagged records; review QC before using them for scientific analysis.
+
+These reference results were generated with this public edition on 26 October 2026, using the included Python 3.12.14 and R 4.5.1 runtimes. The original waveforms and scientific methods are preserved.
+
+## Included files
+
+| File or folder | Purpose |
+|---|---|
+| `input/2013_05.h5` | Prepared input: calibrated acceleration and original counts for clipping checks. |
+| `metadata/catalogue.xlsx` | Example catalogue containing this event only; all times are UTC. |
+| `metadata/stations.xlsx` | The three sample stations, coordinates and ADC resolution. |
+| `sample_settings.json` | The settings loaded by the sample button. |
+| `reference_results/2013_05_results.xlsx` | Consolidated scores, selected corners, windows and sanity outcomes; includes a column guide and processing settings. |
+| `reference_results/2013_05_processed_2.h5` | The expected trimmed and filtered acceleration, velocity and displacement. |
+| `reference_results/2013_05_processed_2_IMs_output.xlsx` | Expected intensity measures and spectra. |
+| `reference_results/Figures/` | Diagnostic figures from the verified run. |
+| `reference_manifest.json` | Expected counts, file references and comparison tolerance. |
+| `SHA256SUMS.txt` | Checksums for the supplied sample files, for checking transfer integrity. |
+
+The input already has its instrument response removed. **No raw SEED files, response collection or full NCM catalogue/station collection is included.** The catalogue and station workbooks show the format to use with your own raw recordings; the sample starts from prepared HDF5.
+
+## Settings and comparison
+
+The sample uses all eight Stage 1 methods with the vote setting 5, all five enabled corner-picking methods, low-pass minimum/fallback 8 Hz, and sanity checks 1, 2, 3, 4, 6 and 7. USGS is disabled. The sample's high-pass fallback is **0.3 Hz**, matching its earlier processing configuration; the normal new-project default is **0.1 Hz**. The sample button applies 0.3 Hz automatically. It also enables all available IM groups and selects two workers.
+
+The comparison checks event/trace identities and categorical outcomes exactly, and numeric result cells, waveform samples and IM cells with **relative tolerance 1e-7 and absolute tolerance 1e-10**. This allows small floating-point differences; it is not a guarantee that every future library or interpreter will reproduce identical results. Start with the bundled runtime for the closest comparison. Paths, file timestamps and workbook/HDF5 binary layout are not scientific comparison criteria. Missing values must agree in both results.
+
+All 54 processed waveform datasets (18 × acceleration/velocity/displacement) are compared. In the IM sheets, spectral values outside the usable frequency range may intentionally be blank. A blank individual classifier score may reflect early stopping; its adjacent status explains this.
+
+The reference workbooks use relative links, so keep the complete test folder together. To rerun, create another empty project folder; do not use the reference results as processing inputs.
+
+NCM supplied the sample waveforms and metadata. Their data-access terms remain applicable; the example does not provide access to the wider archive.

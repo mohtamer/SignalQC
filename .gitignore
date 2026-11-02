@@ -1,0 +1,24 @@
+# Portable runtimes are release assets, not Git source files.
+/runtime/python/
+/runtime/R/
+/runtime/R-library/
+/runtime/R-IM-library/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.sqlite
+.run.lock
+/outputs/
+/projects/
+/qa/
+/development_backups/
+*.inspect.ndjson
+*.zip
+!runtime/setup_packages/*.zip

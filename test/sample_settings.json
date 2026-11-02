@@ -1,0 +1,57 @@
+{
+  "enabled_checks": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "6",
+    "7"
+  ],
+  "save_figures": true,
+  "processed_suffix": "processed_2",
+  "default_bits": 24,
+  "im_measures": [
+    "psa_h1",
+    "psa_h2",
+    "psa_v",
+    "rotd50",
+    "rotd100",
+    "gmrotd50",
+    "eas",
+    "fav",
+    "duration",
+    "cav"
+  ],
+  "acceptreject_methods": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+  ],
+  "acceptreject_required_votes": 5,
+  "filtering_methods": [
+    "snr_kishida",
+    "empirical",
+    "ancheta",
+    "guo",
+    "hk"
+  ],
+  "filtering_hp_fallback_hz": 0.3,
+  "filtering_lp_min_hz": 8.0,
+  "name": "Sample earthquake \u2014 11 May 2013",
+  "workers": 2,
+  "stages": [
+    "acceptreject",
+    "filtering",
+    "sanity",
+    "intensity"
+  ],
+  "input_hdf5": "input/2013_05.h5",
+  "event_catalog": "metadata/catalogue.xlsx",
+  "station_catalog": "metadata/stations.xlsx",
+  "event_id": "20130511_020812"
+}

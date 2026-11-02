@@ -1,0 +1,31 @@
+{
+  "event_id": "20130511_020812",
+  "origin_time_utc": "2013-05-11T02:08:12Z",
+  "verified_date": "2026-10-26",
+  "results_workbook": "2013_05_results.xlsx",
+  "processed_hdf5": "2013_05_processed_2.h5",
+  "ims_workbook": "2013_05_processed_2_IMs_output.xlsx",
+  "input_hdf5": "input/2013_05.h5",
+  "settings": "sample_settings.json",
+  "components": 18,
+  "stage1_accepted": 18,
+  "stage2_completed": 18,
+  "sanity_pass": 12,
+  "sanity_fail": 6,
+  "reference_runtime": {
+    "python": "3.12.14",
+    "R": "4.5.1",
+    "platform": "Windows 64-bit"
+  },
+  "comparison_tolerance": {
+    "relative": 1e-07,
+    "absolute": 1e-10
+  },
+  "notes": [
+    "Check 5 is disabled. All 18 components pass Stage 1.",
+    "Sample high-pass fallback is 0.3 Hz; normal project default is 0.1 Hz.",
+    "IMs include all processed records, including records flagged by sanity checks. Inspect QC before scientific use."
+  ],
+  "RotD50_horizontal_pairs": 6,
+  "RotD100_horizontal_pairs": 6
+}

@@ -1,0 +1,30 @@
+import numpy as np
+def getInputMetadata(Input):
+    return {
+        u"lnIM1": np.log(Input[0]),
+        u"IM2":  Input[1],
+        u"lnIM3": np.log(Input[2]),
+        u"lnIM4": np.log(Input[3]),
+        u"lnIM6": np.log(Input[5]),
+        u"lnIM7": np.log(Input[6]),
+        u"lnIM8": np.log(Input[7]),
+        u"lnIM9": np.log(Input[8]),
+        u"lnIM10": np.log(Input[9]),
+        u"lnIM14": np.log(Input[13]),
+        u"lnIM15": np.log(Input[14]),
+        u"IM16": Input[15],
+        u"IM17": Input[16],
+        u"lnIM18": np.log(Input[17]),
+        u"IM19": Input[18],
+        u"IM20": Input[19],
+        u"IM21": Input[20],
+        u"IM22": Input[21],
+        u"IM23": Input[22],
+        u"IM24": Input[23],
+        u"IM25": Input[24],
+        u"lnIM26": np.log(Input[25]),
+        u"IM27": Input[26],
+        u"lnIM28": np.log(Input[27]),
+        u"lnIM29": np.log(Input[28]),
+        u"lnIM30": np.log(Input[29])
+	}

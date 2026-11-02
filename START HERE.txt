@@ -1,0 +1,21 @@
+SIGNALQC
+Developed by Mohamed T. Hussein & Tadahiro Kishida
+
+PORTABLE ZIP
+Extract the whole folder, then open Launch SignalQC.cmd.
+Python, R and packages are included. PyCharm and MATLAB are not needed.
+
+SOURCE DOWNLOAD / APPROVED INSTALLED RUNTIMES
+Run Launch SignalQC - Installed Python and R.py with your installed Python.
+Select python.exe and Rscript.exe, then click Set up and open SignalQC.
+The first setup needs internet access to install packages into your user folder.
+
+TRY THE SAMPLE
+1. Select Process existing HDF5 files.
+2. Input data > Use included sample inputs.
+3. Save project into a new empty folder outside test.
+4. Review and run > scan, review, then start.
+5. Results > Compare sample results.
+
+The sample input, reference outputs and instructions are in test.
+Read README.md for the complete guide and setup requirements.
