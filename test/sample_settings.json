@@ -10,18 +10,6 @@
   "save_figures": true,
   "processed_suffix": "processed_2",
   "default_bits": 24,
-  "im_measures": [
-    "psa_h1",
-    "psa_h2",
-    "psa_v",
-    "rotd50",
-    "rotd100",
-    "gmrotd50",
-    "eas",
-    "fav",
-    "duration",
-    "cav"
-  ],
   "acceptreject_methods": [
     "1",
     "2",
@@ -42,13 +30,12 @@
   ],
   "filtering_hp_fallback_hz": 0.3,
   "filtering_lp_min_hz": 8.0,
-  "name": "Sample earthquake \u2014 11 May 2013",
+  "name": "Sample earthquake — 11 May 2013",
   "workers": 2,
   "stages": [
     "acceptreject",
     "filtering",
-    "sanity",
-    "intensity"
+    "sanity"
   ],
   "input_hdf5": "input/2013_05.h5",
   "event_catalog": "metadata/catalogue.xlsx",

@@ -1,6 +1,6 @@
 # SignalQC
 
-SignalQC is a Windows desktop application for automated seismic waveform processing and quality control. It guides users through accept/reject screening, corner-frequency selection, filtering and trimming, baseline correction, and sanity checks. Intensity-measure computation is available as an additional step.
+SignalQC is a Windows desktop application for automated seismic waveform processing and quality control. It guides users through accept/reject screening, corner-frequency selection, filtering and trimming, baseline correction, and sanity checks.
 
 **Developed by Mohamed T. Hussein & Tadahiro Kishida.**
 
@@ -8,7 +8,7 @@ Repository: [github.com/mohtamer/SignalQC](https://github.com/mohtamer/SignalQC)
 
 ## Start here
 
-Choose the instructions that match the package you downloaded.
+**[Download the complete Windows app](https://github.com/mohtamer/SignalQC/releases/download/v2026.11.02/SignalQC_Public_2026-11-02.zip)** for offline use, or follow the source instructions below.
 
 | Package | How to open it | What you need |
 |---|---|---|
@@ -26,7 +26,7 @@ The reference environment is Python **3.12.14** and R **4.5.1**. Later interpret
 The `test` folder contains one earthquake: **11 May 2013, 02:08:12 UTC**, magnitude **6.3 Mwp**. There are **18 waveform components** from **AE.AJN, AE.ALN and AE.MSF**, including HH and HN recordings. The input HDF5 already contains response-corrected acceleration and the original counts required by the clipping check. Instrument-response files are therefore unnecessary for this demonstration.
 
 1. Open SignalQC and select **Process existing HDF5 files**.
-2. Go to **Input data** and click **Use included sample inputs**. This loads the HDF5, station sheet and recorded processing settings, including intensity measures.
+2. Go to **Input data** and click **Use included sample inputs**. This loads the HDF5, station sheet and recorded processing settings.
 3. Click **Save project** and choose a **new empty folder**, for example `Documents/SignalQC sample run`. Keep this outside the supplied `test` folder.
 4. Go to **Review and run**, scan the inputs, review the counts, then start processing. Leave the sample settings unchanged for comparison.
 5. When processing finishes, open **Results**. Compare your results with `test/reference_results` using **Compare sample results**. You can also use **Browse existing results folder** to view the reference tables and HDF5 directly.
@@ -46,7 +46,6 @@ Start with **Select task**. The following screens show only the inputs required 
 | **Process existing HDF5 files** | HDF5 containing calibrated acceleration, sampling rate and usable record timing. Metadata stored in the HDF5 are used directly. |
 | **Create HDF5 files** | Raw recordings, an earthquake catalogue, and instrument responses when converting counts. Station coordinates may come from a station sheet or response inventory. |
 | **Create HDF5 files and process** | The conversion inputs above; select the processing stages to run afterwards. |
-| **Intensity measures only** | Processed HDF5 with acceleration, velocity and displacement; earlier results metadata where required. |
 | **Reader** | Any supported existing HDF5. Browse its structure and plot waveforms without starting processing or creating a project. |
 
 For raw recordings, **Add folder** searches subfolders. Supported ObsPy formats include SEED, miniSEED, SAC and recognized `.output` recordings. A filename extension alone does not guarantee a valid waveform format. Files may contain one trace or many stations/components. Enable **Attempt decoding files with unrecognized extensions** only when needed.
@@ -85,7 +84,6 @@ If recordings are in instrument counts, supply the correct RESP, dataless SEED o
 - **Stage 1:** eight original quality methods, with the original voting/early-stopping rules. Methods and the vote threshold are selectable. Some individual scores can be blank because early stopping made further evaluation unnecessary.
 - **Stage 2:** the selected SNR–Kishida, empirical, displacement–Ancheta, Guo and Hussein/Kishida methods. Guo runs in Python; MATLAB is not required. **USGS remains disabled.** Missing valid corner estimates use the configured fallbacks and are reported.
 - **Stage 3:** individual check outcomes and a final outcome. Check 5 is off by default. A disabled or unavailable check must not be read as a pass.
-- **Intensity measures:** optional spectra, rotated measures, Fourier/effective amplitude spectra, durations, Arias intensity and CAV, using the included IM routines. These are reported in a separate IM workbook because their spectral tables are much wider than the processing results.
 
 The project stores one consolidated **`*_results.xlsx`** per processed input/grouping, including classifier scores, corner estimates from each enabled method, final corners, windows and sanity outcomes. Processed waveforms are saved in **`*_processed_2.h5`** with acceleration, velocity and displacement. The suffix is configurable. Diagnostic plots remain available in the Figures folders; they do not crowd the Results file list. Intermediate logs and checkpoints support diagnosis and resuming.
 
@@ -109,7 +107,6 @@ Start with **2 workers** on a laptop. Increase gradually if memory permits. Work
 | R shortcut selected instead of Rscript | Select a path such as `C:\Program Files\R\R-4.5.1\bin\Rscript.exe`, not the Start Menu shortcut folder. |
 | No events match raw files | Check catalogue filename stems and UTC origin/start times, then rescan. |
 | HDF5 has unexpected names or layers | Use the optional data-mapping review. |
-| Missing rotated IMs | Check that both horizontal components have valid processed histories; inspect the IM status and error fields. |
 | Results differ from the example | Use the sample button, a new empty project, identical input data/settings and the bundled reference runtime. Run the included comparison and inspect any reported differences. |
 
 See [installed-runtime setup](docs/installed_runtime_launcher.txt) for the alternate launcher. Use **Check SignalQC.py** for runtime diagnostics without processing waveforms.

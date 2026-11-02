@@ -4,7 +4,7 @@ SignalQC combines the authors' application and trained models with scientific ro
 
 - Python and R include their license information in `runtime/python` and `runtime/R` in the portable distribution.
 - Python packages include their license metadata in their `.dist-info` directories. The exact portable versions are listed in `runtime/requirements-portable.lock.txt` and `runtime/portable_manifest.json`.
-- R packages retain their `DESCRIPTION`, `LICENSE`/`LICENCE` and citation files. Filtering and IM calculation use separate RCTC versions to retain the existing implementations.
+- R packages retain their `DESCRIPTION`, `LICENSE`/`LICENCE` and citation files. Filtering uses the included RCTC 0.1.0.
 - The local SciPy compatibility routine has its license in `engines/sanity/scipy_signal_compat_LICENSE.txt`.
 - Original algorithm and model attribution remains in the processing source files and the accompanying manuscript. Preserve those notices when redistributing.
 

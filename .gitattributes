@@ -1,0 +1,3 @@
+# These files are distributed with checksums; keep their bytes on every OS.
+test/** -text
+runtime/setup_packages/R-packages.tsv -text

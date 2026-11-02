@@ -5,7 +5,7 @@ from copy import deepcopy
 from pathlib import Path
 from .method_settings_v1 import method_setting_errors
 
-STAGES = ('ingestion', 'acceptreject', 'filtering', 'sanity', 'intensity')
+STAGES = ('ingestion', 'acceptreject', 'filtering', 'sanity')
 
 
 def relevant_input_config(config):
@@ -16,7 +16,7 @@ def relevant_input_config(config):
     stages = set(cfg.get('stages') or [])
     if 'ingestion' not in stages:
         cfg.update(raw_paths=[], response_paths=[], event_catalog='')
-    if not stages.intersection({'acceptreject', 'filtering', 'sanity', 'intensity'}):
+    if not stages.intersection({'acceptreject', 'filtering', 'sanity'}):
         cfg['hdf5_paths'] = []
     if 'filtering' not in stages or 'acceptreject' in stages:
         cfg['stage1_metadata'] = ''
@@ -37,12 +37,8 @@ def validate_workflow(config, inventory=None):
     if stages.difference(STAGES):
         errors.append('The project contains an unsupported processing stage.')
     errors.extend(method_setting_errors(cfg))
-    from .intensity_v1 import settings_errors
-    errors.extend(settings_errors(cfg))
     ingest = 'ingestion' in stages
-    if ingest and 'intensity' in stages and 'filtering' not in stages:
-        errors.append('Select filtering before calculating intensity measures from newly created HDF5 files.')
-    process = bool(stages.intersection({'acceptreject', 'filtering', 'sanity', 'intensity'}))
+    process = bool(stages.intersection({'acceptreject', 'filtering', 'sanity'}))
     if cfg.get('interface_task') in ('process', 'prepare_process') and not process:
         errors.append('Select at least one processing stage, or choose Create HDF5 files.')
     if ingest and not cfg.get('raw_paths'):
@@ -87,11 +83,6 @@ def validate_workflow(config, inventory=None):
             errors.append('No HDF5 files were detected in the selected inputs.')
         if process and not ingest and counts.get('hdf5_files', 0) and not inventory.get('trace_count', 0):
             errors.append('The selected HDF5 files contain no readable waveform records.')
-        if 'intensity' in stages and 'filtering' not in stages:
-            if inventory.get('im_review_changed'):
-                errors.append('Intensity-measure inputs changed during inspection. Scan again.')
-            if counts.get('hdf5_files', 0) and not inventory.get('im_usable_traces', 0):
-                errors.append('No completed processed SI acceleration, velocity and displacement histories were found for intensity measures. Review the input notices or run filtering first.')
         if 'sanity' in stages and 'filtering' not in stages and counts.get('hdf5_files', 0) > 1:
             errors.append('For sanity checks only, select one source HDF5 file and its matching results table per run.')
         details = inventory.get('hdf5_details', [])

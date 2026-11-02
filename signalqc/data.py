@@ -85,10 +85,6 @@ def inspect_inputs(config, project_folder=None, progress=None):
     from .hdf5_profiles_v1 import hdf5_review_fingerprint
     hdf5_files=[str(path) for path in files if path.suffix.lower() in ('.h5','.hdf5')]
     hdf5_review_before=hdf5_review_fingerprint(config,hdf5_files)
-    inspect_im='intensity' in config.get('stages',[]) and 'filtering' not in config.get('stages',[])
-    if inspect_im:
-        from .intensity_v1 import inspect_processed, review_fingerprint
-        im_review_before=review_fingerprint(config,hdf5_files)
     explicit_raw={Path(p).resolve() for p in config.get('raw_paths',[]) if Path(p).is_file()}
     explicit_response={Path(p).resolve() for p in config.get('response_paths',[]) if Path(p).is_file()}
     result=dict(raw_files=[],hdf5_files=[],response_files=[],other_files=[],issues=[],trace_count=0,
@@ -163,21 +159,6 @@ def inspect_inputs(config, project_folder=None, progress=None):
     result['raw_trace_count']=raw_traces
     result['networks']=sorted(networks)
     result['counts']={k:len(result[k]) for k in ('raw_files','hdf5_files','response_files','other_files')}
-    if inspect_im:
-        result.update(im_details=[],im_usable_traces=0,im_record_sets=0)
-        for name in result['hdf5_files']:
-            try:
-                detail=inspect_processed(name)
-                result['im_usable_traces']+=detail['usable_traces']
-                result['im_record_sets']+=detail['record_sets']
-                result['im_details'].append({k:v for k,v in detail.items() if k not in ('records','usable')})
-                result['issues'].extend(f'{Path(name).name}: {x}' for x in detail['issues'])
-                excluded=len(detail['records'])-detail['usable_traces']
-                if excluded:result['issues'].append(f'{Path(name).name}: {excluded} traces are not usable processed histories for IMs.')
-            except Exception as exc:
-                result['issues'].append(f'{Path(name).name}: IM input inspection failed: {exc}')
-        result['im_review_fingerprint']=review_fingerprint(config,result['hdf5_files'])
-        result['im_review_changed']=result['im_review_fingerprint']!=im_review_before
     result['hdf5_review_fingerprint']=hdf5_review_fingerprint(config,result['hdf5_files'])
     result['ncm_reference_fingerprint']=reference_fingerprint(config)
     result['ncm_reference_changed']=reference_before!=result['ncm_reference_fingerprint']

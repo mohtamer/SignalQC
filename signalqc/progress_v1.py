@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 STAGES = {'ingestion':'HDF5 preparation', 'acceptreject':'1 · Accept / reject',
-          'filtering':'2 · Filtering', 'sanity':'3 · Sanity checks', 'intensity':'Intensity measures'}
+          'filtering':'2 · Filtering', 'sanity':'3 · Sanity checks'}
 
 
 def duration(seconds):
@@ -103,12 +103,6 @@ class RunProgress:
             if self.unit != 'record groups': self._phase('Checking records', 0, int(event['total']), 'record groups')
             self.issue_count=int(event.get('failed_groups',0))
             self.current = int(event.get('current',0))+self.issue_count; self.total = int(event['total'])
-        elif stage == 'intensity':
-            if kind == 'start': self._phase('Computing intensity measures', 0, int(event.get('total',0)), 'record sets')
-            elif kind == 'record_sets_started': self._phase('Computing intensity measures',int(event.get('current',0)),int(event.get('total',0)),'record sets')
-            elif kind == 'record_sets_finished':
-                self.current = int(event.get('current',0)); self.total = int(event.get('total',0))
-                if self.current == self.total: self.phase = 'Writing IM workbook'
         elif stage == 'ingestion' and event.get('total'):
             phase = ('Loading responses' if message.startswith('Response inventory') else
                      'Checking record identities' if message.startswith('Checking record identities') else
@@ -206,7 +200,7 @@ def build_progress_panel(parent=None):
                 self.queue_dirty=False
                 stages=[x for x in m.stages if x!='ingestion']
                 self.queue.setColumnCount(2+len(stages))
-                names={'acceptreject':'Accept / reject','filtering':'Filtering','sanity':'Sanity checks','intensity':'IMs'}
+                names={'acceptreject':'Accept / reject','filtering':'Filtering','sanity':'Sanity checks'}
                 self.queue.setHorizontalHeaderLabels(['HDF5 file','Status']+[names.get(x,x) for x in stages])
                 self.queue.horizontalHeader().setSectionResizeMode(0,QHeaderView.Stretch)
                 for col in range(1,2+len(stages)): self.queue.horizontalHeader().setSectionResizeMode(col,QHeaderView.ResizeToContents)

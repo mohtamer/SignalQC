@@ -67,7 +67,7 @@ def clean_environment():
 def environment_for(settings):
     env = clean_environment()
     env.update(PYTHONPATH=settings['python_site'], RETICULATE_PYTHON=settings['python'],
-               SIGNALQC_R_LIBRARY=settings['r_library'], SIGNALQC_R_IM_LIBRARY=settings['r_im_library'],
+               SIGNALQC_R_LIBRARY=settings['r_library'],
                R_LIBS_USER=settings['r_library'], OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1')
     return env
 
@@ -192,10 +192,9 @@ class Setup:
         requirement=APP/('requirements-python311.txt' if settings['identity']['python_version'][1]==11 else 'runtime/requirements-portable.lock.txt')
         self.command([settings['python'],'-s','-B',str(APP/'signalqc/external_python_check_v1.py'),
                       settings['python_site'],str(APP),str(requirement)],env,120)
-        for mode in ('filtering','intensity'):
-            self.command([settings['rscript'],'--vanilla',str(APP/'signalqc/external_packages_v1.R'),'check',
-                str(APP/'runtime/setup_packages/R-packages.tsv'),settings['r_library'],settings['r_im_library'],
-                str(APP),settings['python'],mode],env,180)
+        self.command([settings['rscript'],'--vanilla',str(APP/'signalqc/external_packages_v1.R'),'check',
+                str(APP/'runtime/setup_packages/R-packages.tsv'),settings['r_library'],
+                str(APP),settings['python']],env,180)
 
     def prepare(self, python, rscript):
         self.say('1 / 4  Checking the selected installed Python and R.')
@@ -210,7 +209,7 @@ class Setup:
         folder=self.root/'environments'/key; folder.mkdir(parents=True,exist_ok=True)
         config=folder/'environment.json'
         settings=dict(schema=1,ready=False,python=python,rscript=rscript,python_site=str(folder/'python-packages'),
-            r_library=str(folder/'R-library'),r_im_library=str(folder/'R-IM-library'),identity=identity)
+            r_library=str(folder/'R-library'),identity=identity)
         # Serialize setup per environment; Windows releases this lock even after an interrupted launcher.
         with setup_lock(folder):
             if config.is_file() and any(Path(settings['python_site']).glob('*.dist-info')):
@@ -220,17 +219,17 @@ class Setup:
                     return self.finish(settings,config)
                 except RuntimeError as exc:
                     self.say('The saved environment needs repair: '+str(exc))
-            for name in ('python_site','r_library','r_im_library'):Path(settings[name]).mkdir(exist_ok=True)
+            for name in ('python_site','r_library'):Path(settings[name]).mkdir(exist_ok=True)
             atomic_json(config,settings)
             self.say('2 / 4  Installing the complete Python dependency set into '+settings['python_site'])
             pip=self.pip_wheel(); env=clean_environment(); env['PYTHONPATH']=str(pip)
             self.command([python,'-s','-B','-m','pip','--isolated','--disable-pip-version-check','install',
                 '--index-url','https://pypi.org/simple','--only-binary=:all:','--no-input','--no-cache-dir',
                 '--no-compile','--upgrade','--ignore-installed','--target',settings['python_site'],'-r',str(requirement)],env)
-            self.say('3 / 4  Installing R dependencies, including the separate filtering and intensity libraries.')
+            self.say('3 / 4  Installing R dependencies, in the private package library.')
             self.command([rscript,'--vanilla',str(APP/'signalqc/external_packages_v1.R'),'install',
-                str(APP/'runtime/setup_packages/R-packages.tsv'),settings['r_library'],settings['r_im_library'],
-                str(APP),python,'filtering'],environment_for(settings))
+                str(APP/'runtime/setup_packages/R-packages.tsv'),settings['r_library'],
+                str(APP),python],environment_for(settings))
             self.say('4 / 4  Checking every stage\'s dependencies and the R-to-Python connection.')
             self.check(settings)
             return self.finish(settings,config)

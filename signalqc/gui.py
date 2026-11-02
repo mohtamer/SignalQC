@@ -152,8 +152,7 @@ class Window(QMainWindow):
     def build_task(self):
         page=self.page('Select a task','Choose the starting point for this project. The following steps show only the inputs and options required for your selection.')
         self.task_buttons={}; self.task_cards={}; self.task_group=QButtonGroup(self)
-        tasks=[('process','Process existing HDF5 files','Run the selected processing stages and optionally calculate intensity measures.'),
-               ('ims','Calculate intensity measures','Calculate IMs from existing processed HDF5 files without repeating waveform processing.'),
+        tasks=[('process','Process existing HDF5 files','Run accept/reject, filtering and sanity checks on prepared waveforms.'),
                ('prepare','Create HDF5 files','Convert waveform recordings to HDF5, with optional instrument response removal.'),
                ('prepare_process','Create HDF5 files and process','Prepare recordings, then run the selected processing stages.')]
         cards=QVBoxLayout(); cards.setSpacing(9)
@@ -168,9 +167,8 @@ class Window(QMainWindow):
         for key,title,description in [
             ('acceptreject','Stage 1   Accept / reject','Evaluate waveform quality using the original acceptance models and scores.'),
             ('filtering','Stage 2   Filtering','Select corner frequencies, trim and baseline-correct; save acceleration, velocity and displacement.'),
-            ('sanity','Stage 3   Sanity checks','Evaluate the selected checks and record individual outcomes.'),
-            ('intensity','Intensity measures (optional)','Compute spectra, rotated measures, durations, Arias intensity and CAV from processed histories.')]:
-            cb=QCheckBox(title); cb.setChecked(key!='intensity'); cb.setStyleSheet('font-weight:600;'); self.stage_boxes[key]=cb; stages.addWidget(cb)
+            ('sanity','Stage 3   Sanity checks','Evaluate the selected checks and record individual outcomes.')]:
+            cb=QCheckBox(title); cb.setChecked(True); cb.setStyleSheet('font-weight:600;'); self.stage_boxes[key]=cb; stages.addWidget(cb)
             text=QLabel(description); text.setWordWrap(True); text.setStyleSheet('color:#485b70;margin-left:27px;'); stages.addWidget(text)
             cb.stateChanged.connect(self.stage_selection_changed)
         self.stage_hint=QLabel(); self.stage_hint.setWordWrap(True); self.stage_hint.setStyleSheet('color:#40576e;padding-top:8px;'); stages.addWidget(self.stage_hint); page.addWidget(self.stage_panel)
@@ -184,7 +182,7 @@ class Window(QMainWindow):
     def select_task(self,key):
         if not hasattr(self,'stage_boxes'): return
         self.stage_boxes['ingestion'].setChecked(key in ('prepare','prepare_process'))
-        self.stage_panel.setVisible(key not in ('prepare','ims'))
+        self.stage_panel.setVisible(key!='prepare')
         self.invalidate(); self.update_context()
 
     def stage_selection_changed(self,*args):
@@ -221,7 +219,6 @@ class Window(QMainWindow):
         self.previous_box=QGroupBox('Processing metadata'); ef=QFormLayout(self.previous_box); self.previous_form=ef
         self.file_field(ef,'Stage 1 results','stage1_metadata','Tables (*.csv *.xlsx);;All files (*)')
         self.file_field(ef,'Stage 2 results','filtering_metadata','Tables (*.csv *.xlsx);;All files (*)')
-        self.file_field(ef,'IM metadata (optional)','im_metadata','Tables (*.csv *.xlsx);;All files (*)')
         note=QLabel('Select the matching consolidated results workbook or a compatible table from the earlier stage. Record identifiers must match the selected HDF5 files.'); note.setWordWrap(True); ef.addRow(note); page.addWidget(self.previous_box)
         self.sample_button=QPushButton('Use included sample inputs'); self.sample_button.clicked.connect(self.sample_inputs)
         page.addWidget(self.sample_button,alignment=Qt.AlignLeft)
@@ -234,7 +231,7 @@ class Window(QMainWindow):
         from .hdf5_profiles_v1 import mapping_files,mapping_for_source
         if self.task_key()=='process' or self.task_key()=='prepare_process' and self.include_existing.isChecked():
             files=mapping_files(self.hdf5_paths.values(),self.project.folder if self.project else None)
-            if files and set(self.collect()['stages'])!={'intensity'} and any(not mapping_for_source(self.config,path) for path in files):
+            if files and any(not mapping_for_source(self.config,path) for path in files):
                 if not self.edit_hdf5_mapping():return
         self.nav.setCurrentRow(2)
 
@@ -283,21 +280,7 @@ class Window(QMainWindow):
         for widget in [self.remove_response,self.figures,self.resume,self.scan_all,*self.checks.values()]: widget.stateChanged.connect(self.stage_selection_changed)
         for widget in [self.bits,self.workers]: widget.valueChanged.connect(self.invalidate)
         self.suffix.textChanged.connect(self.invalidate)
-        self.build_intensity_controls(page)
         page.addStretch(); self.next_step(page,3,'Continue to review')
-
-    def build_intensity_controls(self,page):
-        from .intensity_v1 import MEASURES
-        self.intensity_box=QGroupBox('Intensity measures'); layout=QVBoxLayout(self.intensity_box)
-        note=QLabel('Defaults: all IM groups from IMs_FINAL_v4, 5% damping, original periods and Fourier settings. Calculations use stored processed histories; filtering is not repeated. One IM workbook is saved per processed HDF5.')
-        note.setWordWrap(True); layout.addWidget(note)
-        grid=QGridLayout(); self.im_boxes={}
-        for i,(key,label) in enumerate(MEASURES.items()):
-            box=QCheckBox(label); box.setChecked(True); box.toggled.connect(self.invalidate)
-            self.im_boxes[key]=box; grid.addWidget(box,i//2,i%2)
-        layout.addLayout(grid)
-        note=QLabel('Waveform units: acceleration m/s², velocity m/s, displacement m. Legacy Trimmed_Filtered=Yes and current Stage-2-complete records are recognized. QC flags remain in the processing results; no additional acceptance rule is imposed. Missing components produce unavailable pair/component measures.')
-        note.setWordWrap(True); layout.addWidget(note); page.addWidget(self.intensity_box)
 
     def select_workbook_sheet(self,name):
         path=getattr(self,'selected_workbook',None)
@@ -386,17 +369,14 @@ class Window(QMainWindow):
     def update_context(self):
         if not hasattr(self,'runtime_info') or getattr(self,'_applying_config',False): return
         task=self.task_key(); preparation=task in ('prepare','prepare_process'); processing=task!='prepare'
-        selected={'intensity'} if task=='ims' else {k for k,b in self.stage_boxes.items() if b.isChecked() and k!='ingestion'} if processing else set()
-        self.stage_panel.setVisible(processing and task!='ims')
+        selected={k for k,b in self.stage_boxes.items() if b.isChecked() and k!='ingestion'} if processing else set()
+        self.stage_panel.setVisible(processing)
         self.sample_button.setVisible((APP_ROOT/'test'/'sample_settings.json').is_file())
         self.input_boxes['raw_paths'].setVisible(preparation)
         self.input_boxes['response_paths'].setVisible(preparation and self.remove_response.isChecked())
         self.include_existing.setVisible(task=='prepare_process')
-        self.input_boxes['hdf5_paths'].setVisible(task in ('process','ims') or task=='prepare_process' and self.include_existing.isChecked())
-        self.generation_box.setVisible(preparation); self.processing_box.setVisible(processing and task!='ims')
-        self.intensity_box.setVisible('intensity' in selected)
-        self.hdf5_mapping_button.setVisible(selected!={'intensity'})
-        self.hdf5_mapping_status.setVisible(selected!={'intensity'})
+        self.input_boxes['hdf5_paths'].setVisible(task=='process' or task=='prepare_process' and self.include_existing.isChecked())
+        self.generation_box.setVisible(preparation); self.processing_box.setVisible(processing)
         self.sanity_box.setVisible('sanity' in selected)
         self.acceptance_methods_box.setVisible('acceptreject' in selected)
         self.filter_methods_box.setVisible('filtering' in selected)
@@ -408,9 +388,7 @@ class Window(QMainWindow):
         self.catalog_note.setText('A station catalog is optional when coordinates and responses are supplied by StationXML or dataless SEED.' if preparation else 'For the clipping check, a station catalog can supply ADC resolution by network, station, channel and epoch. Otherwise the configured fallback is used.')
         need_stage1='filtering' in selected and 'acceptreject' not in selected
         need_stage2='sanity' in selected and 'filtering' not in selected
-        need_im='intensity' in selected and 'filtering' not in selected
-        self.previous_box.setVisible(need_stage1 or need_stage2 or need_im)
-        self.form_row_visible(self.previous_form,self.im_metadata,need_im)
+        self.previous_box.setVisible(need_stage1 or need_stage2)
         self.form_row_visible(self.previous_form,self.stage1_metadata,need_stage1)
         self.form_row_visible(self.previous_form,self.filtering_metadata,need_stage2)
         hints=[]
@@ -418,10 +396,10 @@ class Window(QMainWindow):
         if need_stage2: hints.append('Stage 3 requires matching Stage 2 results.')
         if processing and not selected: hints.append('Select at least one processing stage.')
         self.stage_hint.setText(' '.join(hints) or 'Stages run in the displayed order. Completed work can be resumed from its saved project.')
-        self.input_context.setText('Select raw recordings and the metadata needed to create HDF5 files.' if preparation else 'Select processed HDF5 files containing acceleration, velocity and displacement histories. Metadata can be read from the HDF5 or supplied in a results table.' if selected=={'intensity'} else 'Select HDF5 files containing calibrated acceleration.')
+        self.input_context.setText('Select raw recordings and the metadata needed to create HDF5 files.' if preparation else 'Select HDF5 files containing calibrated acceleration.')
         if hasattr(self,'stats_boxes'):
             for key,box in self.stats_boxes.items():
-                box.setVisible(preparation if key in ('raw_files','raw_trace_count','response_files') else task in ('process','ims') or self.include_existing.isChecked())
+                box.setVisible(preparation if key in ('raw_files','raw_trace_count','response_files') else task=='process' or self.include_existing.isChecked())
         saved=sum(bool(mapping.get('enabled')) for mapping in self.config.get('hdf5_mappings',{}).values() if isinstance(mapping,dict))
         native=sum(mapping.get('enabled') is False for mapping in self.config.get('hdf5_mappings',{}).values() if isinstance(mapping,dict))
         legacy=self.config.get('hdf5_mapping',{}).get('enabled')
@@ -434,7 +412,7 @@ class Window(QMainWindow):
     def update_review(self):
         if not hasattr(self,'run_summary'): return
         cfg=self.collect()
-        names={'ingestion':'HDF5 preparation','acceptreject':'Stage 1: accept / reject','filtering':'Stage 2: filtering','sanity':'Stage 3: sanity checks','intensity':'Intensity measures'}
+        names={'ingestion':'HDF5 preparation','acceptreject':'Stage 1: accept / reject','filtering':'Stage 2: filtering','sanity':'Stage 3: sanity checks'}
         sequence=' → '.join(names[k] for k in cfg['stages']) or 'No processing stages selected'
         output=str(self.project.folder) if self.project else 'Choose a project folder when saving or starting the run.'
         text=f'{sequence}\nProject folder: {output}\nWorkers: {cfg["workers"]}   |   Resume: {"enabled" if cfg["resume"] else "disabled"}'
@@ -443,10 +421,6 @@ class Window(QMainWindow):
             text+='\nAcceptance: '+('Original voting rules; five-vote setting, eight methods.' if legacy else f'{cfg["acceptreject_required_votes"]} of {len(cfg["acceptreject_methods"])} enabled methods must accept.')
         if 'filtering' in cfg['stages']:text+=f'\nFiltering: {len(cfg["filtering_methods"])} methods; high-pass fallback {cfg["filtering_hp_fallback_hz"]:g} Hz; low-pass minimum/fallback {cfg["filtering_lp_min_hz"]:g} Hz.'
         if 'sanity' in cfg['stages']: text+='   |   Sanity checks: '+(', '.join(cfg['enabled_checks']) or 'none')
-        if 'intensity' in cfg['stages']:
-            from .intensity_v1 import MEASURES
-            text+=f'\nIntensity measures: {len(cfg["im_measures"])} of {len(MEASURES)} groups enabled; original 5% damping; one IM workbook per processed HDF5.'
-            if len(cfg['im_measures'])<len(MEASURES):text+='\nSelected IM groups: '+(', '.join(MEASURES[k] for k in cfg['im_measures']) or 'none')
         if 'ingestion' in cfg['stages']:text+='\nEvent matching: file name first, then trace start −2 min to +1 h; full waveform saved for every matched event.'
         if self.preflight:
             errors=self.preflight.get('blocking_issues',[])
@@ -547,19 +521,19 @@ class Window(QMainWindow):
         cfg=copy.deepcopy(self.config)
         task=self.task_key()
         selected=[k for k,b in self.stage_boxes.items() if b.isChecked() and k!='ingestion']
-        stages=['intensity'] if task=='ims' else (['ingestion'] if task in ('prepare','prepare_process') else [])+(selected if task!='prepare' else [])
+        stages=(['ingestion'] if task in ('prepare','prepare_process') else [])+(selected if task!='prepare' else [])
         cfg.update(name=self.name.text().strip() or 'Untitled project',column_mappings=copy.deepcopy(self.mapping),
                    grouping=self.grouping.currentText(),remove_response=self.remove_response.isChecked(),input_units=self.input_units.currentText(),
                    processed_suffix=self.suffix.text().strip(),workers=self.workers.value(),save_figures=self.figures.isChecked(),
                    resume=self.resume.isChecked(),scan_all_files=self.scan_all.isChecked(),default_bits=self.bits.value(),
-                   im_measures=[k for k,b in self.im_boxes.items() if b.isChecked()],enabled_checks=[k for k,b in self.checks.items() if b.isChecked()],stages=stages,interface_task=task)
+                   enabled_checks=[k for k,b in self.checks.items() if b.isChecked()],stages=stages,interface_task=task)
         cfg.update(acceptreject_methods=[k for k,b in self.acceptance_method_boxes.items() if b.isChecked()],
                    acceptreject_required_votes=self.required_votes.value(),
                    filtering_methods=[k for k,b in self.filter_method_boxes.items() if b.isChecked()],
                    filtering_hp_fallback_hz=self.hp_fallback.value(),filtering_lp_min_hz=self.lp_minimum.value())
         saved={}
         for key in ['raw_paths','response_paths','hdf5_paths']: saved[key]=getattr(self,key).values()
-        for key in ['event_catalog','station_catalog','stage1_metadata','filtering_metadata','im_metadata']:
+        for key in ['event_catalog','station_catalog','stage1_metadata','filtering_metadata']:
             saved[key]=getattr(self,key).text().strip()
         cfg.update(saved)
         saved['include_existing']=self.include_existing.isChecked(); saved['processing_stages']=selected
@@ -589,7 +563,7 @@ class Window(QMainWindow):
             self.name.setText(cfg.get('name','Untitled project'))
             for key in ['raw_paths','response_paths','hdf5_paths']:
                 getattr(self,key).set_values(cfg.get(key) or saved.get(key,[]))
-            for key in ['event_catalog','station_catalog','stage1_metadata','filtering_metadata','im_metadata']:
+            for key in ['event_catalog','station_catalog','stage1_metadata','filtering_metadata']:
                 getattr(self,key).setText(cfg.get(key) or saved.get(key,''))
             for key in ['python_executable','rscript_executable']:
                 getattr(self,key).setText(cfg.get(key,''))
@@ -604,8 +578,7 @@ class Window(QMainWindow):
             self.hp_fallback.setValue(cfg.get('filtering_hp_fallback_hz',DEFAULT_FILTERING_HP_FALLBACK_HZ)); self.lp_minimum.setValue(cfg.get('filtering_lp_min_hz',DEFAULT_FILTERING_LP_MIN_HZ))
             self.refresh_method_controls()
             stages=cfg.get('stages',[])
-            for key,box in self.im_boxes.items():box.setChecked(key in cfg.get('im_measures',list(self.im_boxes)))
-            task='ims' if stages==['intensity'] else 'prepare_process' if 'ingestion' in stages and len(stages)>1 else 'prepare' if stages==['ingestion'] else 'process'
+            task='prepare_process' if 'ingestion' in stages and len(stages)>1 else 'prepare' if stages==['ingestion'] else 'process'
             self.task_buttons[task].setChecked(True)
             retained=saved.get('processing_stages',['acceptreject','filtering','sanity']) if task=='prepare' else stages
             for k,b in self.stage_boxes.items(): b.setChecked(k in (stages if k=='ingestion' else retained))
@@ -634,7 +607,9 @@ class Window(QMainWindow):
         try:
             self.project=Project(folder); self.apply_config(self.project.config)
             self.project_label.setText(self.project.config['name']+'\n'+str(self.project.folder))
-            self.refresh_jobs(); self.refresh_results(); self.statusBar().showMessage('Project opened: '+str(self.project.folder))
+            self.refresh_jobs(); self.refresh_results(); self.statusBar().showMessage(
+                'This project included intensity measures, which are unavailable in the paper edition. Review the remaining stages.'
+                if self.project.retired_stage_removed else 'Project opened: '+str(self.project.folder))
         except Exception as e: self.error(str(e))
     def save(self):
         if not self.project:
@@ -683,7 +658,6 @@ class Window(QMainWindow):
         text=f'Networks: {", ".join(result.get("networks",[])) or "None detected"}\n'
         if 'ingestion' in self.collect()['stages']: text+=f'Waveform formats: {result.get("formats",{})}\n'
         if result.get('event_count'): text+=f'HDF5 events: {result["event_count"]}\n'
-        if 'im_usable_traces' in result:text+=f'IM-ready processed traces: {result["im_usable_traces"]}  |  Record sets: {result["im_record_sets"]}\n'
         if 'catalogs' in result:
             c=result['catalogs']; text+=f'Catalog events: {c.get("event_count",0)}  |  Station rows: {c.get("station_row_count",0)}\n'
             result.setdefault('issues',[]).extend(c.get('issues',[]))
@@ -712,10 +686,6 @@ class Window(QMainWindow):
             cfg=self.collect();files=review_hdf5_files(cfg,self.project.folder if self.project else None)
             if hdf5_review_fingerprint(cfg,files)!=self.preflight['hdf5_review_fingerprint']:
                 self.invalidate();self.error('HDF5 files or mapped metadata changed after the scan. Scan again to review current values.');return
-        if 'im_review_fingerprint' in self.preflight:
-            from .intensity_v1 import review_fingerprint
-            if review_fingerprint(cfg,files)!=self.preflight['im_review_fingerprint']:
-                self.invalidate();self.error('Processed HDF5 files or IM metadata changed after the scan. Scan again.');return
         if not self.save(): return
         cfg=self.collect()
         self.pipeline=Pipeline(self.project); runner=self.pipeline
@@ -807,14 +777,14 @@ class Window(QMainWindow):
         if folder: self.refresh_results(folder)
     def filter_results(self):
         query=self.results_search.text().lower()
-        paths=[p for p in getattr(self,'result_paths',[]) if p.suffix.lower() not in ('.png','.jpg','.jpeg','.svg','.pdf')]
+        paths=[p for p in getattr(self,'result_paths',[]) if not p.name.lower().endswith('_ims_output.xlsx') and 'intensity' not in p.parts and p.suffix.lower() not in ('.png','.jpg','.jpeg','.svg','.pdf')]
         has_consolidated=any(p.name.endswith('_results.xlsx') for p in paths)
         if not self.show_intermediate.isChecked():
-            paths=[p for p in paths if p.suffix.lower() in ('.h5','.hdf5') or p.suffix.lower() in ('.csv','.xlsx') and (not has_consolidated or p.name.endswith(('_results.xlsx','_IMs_output.xlsx')))]
+            paths=[p for p in paths if p.suffix.lower() in ('.h5','.hdf5') or p.suffix.lower() in ('.csv','.xlsx') and (not has_consolidated or p.name.endswith('_results.xlsx'))]
         self.display_paths=[p for p in paths if query in str(p).lower()]
         self.result_files.clear()
         for p in self.display_paths:
-            names={'results':'Consolidated results','ingestion':'Prepared HDF5','acceptreject':'Accept / reject','filtering':'Filtering','sanity':'Sanity checks','intensity':'Intensity measures'}
+            names={'results':'Consolidated results','ingestion':'Prepared HDF5','acceptreject':'Accept / reject','filtering':'Filtering','sanity':'Sanity checks'}
             stage=next((names[x] for x in p.parts if x in names),p.parent.name)
             self.result_files.addItem(p.name+'\n'+stage)
             self.result_files.item(self.result_files.count()-1).setToolTip(str(p))
@@ -952,15 +922,11 @@ class Window(QMainWindow):
             rpath=cfg['rscript_executable']
             if Path(rpath).is_file():
                 env=os.environ.copy(); env.pop('R_HOME',None)
-                libs=('R-IM-library','R-library') if 'intensity' in cfg['stages'] else ('R-library','R-IM-library')
-                env['R_LIBS_USER']=os.pathsep.join(str(APP_ROOT/'runtime'/name) for name in libs)
+                env['R_LIBS_USER']=str(APP_ROOT/'runtime'/'R-library')
                 from .runtime_env_v1 import runtime_environment
-                env=runtime_environment(env,intensity='intensity' in cfg['stages'])
+                env=runtime_environment(env)
                 packages=['reticulate','openxlsx','jsonlite','zoo','RCTC']
-                if 'intensity' in cfg['stages']:packages+=['rhdf5','readxl','dplyr','tidyr','stringr']
                 code='for(p in c('+','.join(json.dumps(p) for p in packages)+')) cat(p,requireNamespace(p,quietly=TRUE),"\\n")'
-                if 'intensity' in cfg['stages']:
-                    code+=';cat("RotD spectral routine",is.function(get0("RotD_cal_PSA",envir=asNamespace("RCTC"),inherits=FALSE)),"\\n")'
                 r=subprocess.run([rpath,'-e',code],env=env,capture_output=True,text=True,creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0,timeout=45); results.append(r.stdout+r.stderr)
             return '\n\n'.join(results)
         self.launch(work,self.runtime_info.setPlainText)

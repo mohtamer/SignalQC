@@ -20,9 +20,8 @@ The Reader can also open either supplied HDF5 directly. Running the example does
 | Stage 1: accept/reject | 18 accepted, 0 rejected |
 | Stage 2: filtering | 18 components processed |
 | Stage 3: sanity checks | 12 pass, 6 fail |
-| Intensity measures | 6 three-component recording groups, including RotD50 and RotD100 for all 6 horizontal pairs |
 
-The sample demonstrates both final QC outcomes, but **no Stage 1 rejections**. The six failed components fail check 7; one also fails check 3. Check 5 is disabled. IMs are computed for all processed records, including flagged records; review QC before using them for scientific analysis.
+The sample demonstrates both final QC outcomes, but **no Stage 1 rejections**. The six failed components fail check 7; one also fails check 3. Check 5 is disabled. Review QC before using the processed records for scientific analysis.
 
 These reference results were generated with this public edition on 26 October 2026, using the included Python 3.12.14 and R 4.5.1 runtimes. The original waveforms and scientific methods are preserved.
 
@@ -36,7 +35,6 @@ These reference results were generated with this public edition on 26 October 20
 | `sample_settings.json` | The settings loaded by the sample button. |
 | `reference_results/2013_05_results.xlsx` | Consolidated scores, selected corners, windows and sanity outcomes; includes a column guide and processing settings. |
 | `reference_results/2013_05_processed_2.h5` | The expected trimmed and filtered acceleration, velocity and displacement. |
-| `reference_results/2013_05_processed_2_IMs_output.xlsx` | Expected intensity measures and spectra. |
 | `reference_results/Figures/` | Diagnostic figures from the verified run. |
 | `reference_manifest.json` | Expected counts, file references and comparison tolerance. |
 | `SHA256SUMS.txt` | Checksums for the supplied sample files, for checking transfer integrity. |
@@ -45,12 +43,12 @@ The input already has its instrument response removed. **No raw SEED files, resp
 
 ## Settings and comparison
 
-The sample uses all eight Stage 1 methods with the vote setting 5, all five enabled corner-picking methods, low-pass minimum/fallback 8 Hz, and sanity checks 1, 2, 3, 4, 6 and 7. USGS is disabled. The sample's high-pass fallback is **0.3 Hz**, matching its earlier processing configuration; the normal new-project default is **0.1 Hz**. The sample button applies 0.3 Hz automatically. It also enables all available IM groups and selects two workers.
+The sample uses all eight Stage 1 methods with the vote setting 5, all five enabled corner-picking methods, low-pass minimum/fallback 8 Hz, and sanity checks 1, 2, 3, 4, 6 and 7. USGS is disabled. The sample's high-pass fallback is **0.3 Hz**, matching its earlier processing configuration; the normal new-project default is **0.1 Hz**. The sample button applies 0.3 Hz automatically. It selects two workers.
 
-The comparison checks event/trace identities and categorical outcomes exactly, and numeric result cells, waveform samples and IM cells with **relative tolerance 1e-7 and absolute tolerance 1e-10**. This allows small floating-point differences; it is not a guarantee that every future library or interpreter will reproduce identical results. Start with the bundled runtime for the closest comparison. Paths, file timestamps and workbook/HDF5 binary layout are not scientific comparison criteria. Missing values must agree in both results.
+The comparison checks event/trace identities and categorical outcomes exactly, and numeric result cells and waveform samples with **relative tolerance 1e-7 and absolute tolerance 1e-10**. This allows small floating-point differences; it is not a guarantee that every future library or interpreter will reproduce identical results. Start with the bundled runtime for the closest comparison. Paths, file timestamps and workbook/HDF5 binary layout are not scientific comparison criteria. Missing values must agree in both results.
 
-All 54 processed waveform datasets (18 × acceleration/velocity/displacement) are compared. In the IM sheets, spectral values outside the usable frequency range may intentionally be blank. A blank individual classifier score may reflect early stopping; its adjacent status explains this.
+All 54 processed waveform datasets (18 × acceleration/velocity/displacement) are compared. A blank individual classifier score may reflect early stopping; its adjacent status explains this.
 
-The reference workbooks use relative links, so keep the complete test folder together. To rerun, create another empty project folder; do not use the reference results as processing inputs.
+The reference workbook uses relative links, so keep the complete test folder together. To rerun, create another empty project folder; do not use the reference results as processing inputs.
 
 NCM supplied the sample waveforms and metadata. Their data-access terms remain applicable; the example does not provide access to the wider archive.

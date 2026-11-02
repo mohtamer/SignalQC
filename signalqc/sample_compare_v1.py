@@ -52,7 +52,7 @@ def compare_sample(folder):
     root=Path(folder).resolve();reference=APP_ROOT/'test/reference_results'
     if root==reference.resolve() or root.is_relative_to(reference.resolve()):
         raise ValueError('Choose your new run folder, not the supplied reference folder.')
-    issues=[];counts={'table_cells':0,'waveform_datasets':0,'waveform_samples':0,'im_cells':0}
+    issues=[];counts={'table_cells':0,'waveform_datasets':0,'waveform_samples':0}
     def issue(message):
         if len(issues)<100:issues.append(message)
     expected=json.loads((APP_ROOT/'test/reference_manifest.json').read_text(encoding='utf-8'))
@@ -93,26 +93,10 @@ def compare_sample(folder):
             for k in rd.keys()&ad.keys():
                 x=rd[k][...];y=ad[k][...];counts['waveform_datasets']+=1;counts['waveform_samples']+=int(x.size)
                 if x.shape!=y.shape or not np.allclose(x,y,rtol=RTOL,atol=ATOL,equal_nan=True):issue('Processed waveform differs: '+k)
-    ims=_run_files(root,'intensity','*_IMs_output.xlsx')
-    if len(ims)!=1:issue(f'Expected one IM workbook; found {len(ims)}. Enable all sample IM groups.')
-    else:
-        with pd.ExcelFile(reference/expected['ims_workbook']) as rb,pd.ExcelFile(ims[0]) as ab:
-            if rb.sheet_names!=ab.sheet_names:issue('IM worksheet names differ.')
-            for name in set(rb.sheet_names)&set(ab.sheet_names):
-                r=rb.parse(name,dtype=object);a=ab.parse(name,dtype=object)
-                if list(r.columns)!=list(a.columns) or r.shape!=a.shape:issue('IM table shape/columns differ: '+name);continue
-                idcols=[c for c in ('RSN','event_id','trace_id','rec_id') if c in r]
-                if idcols and not r.duplicated(idcols).any() and not a.duplicated(idcols).any():
-                    r=r.sort_values(idcols).reset_index(drop=True);a=a.sort_values(idcols).reset_index(drop=True)
-                for c in r:
-                    if c in PATH_FIELDS or any(w in str(c).lower() for w in ('filename','file_path','source_hdf5','output_dir')):continue
-                    for i in range(len(r)):
-                        counts['im_cells']+=1
-                        if not _equal(r.at[i,c],a.at[i,c]):issue(f'IM {name}, row {i+1}, {c} differs.')
     return dict(matches=not issues,issues=issues,counts=counts,rtol=RTOL,atol=ATOL,
                 results_workbook=str(result_path),comparison='Decisions/identities exact; numerical tolerance; paths and file timestamps excluded.')
 
 def format_report(report):
     c=report['counts']
     title='Results match the reference within the stated tolerance.' if report['matches'] else 'Differences found; review the details below.'
-    return title+f'\n\nCompared {c["table_cells"]:,} result cells, {c["waveform_datasets"]} waveform datasets ({c["waveform_samples"]:,} samples) and {c["im_cells"]:,} IM cells.\nRelative tolerance: {RTOL:g}; absolute tolerance: {ATOL:g}.\n'+report['comparison']+'\n\n'+'\n'.join(report['issues'])
+    return title+f'\n\nCompared {c["table_cells"]:,} result cells, {c["waveform_datasets"]} waveform datasets ({c["waveform_samples"]:,} samples).\nRelative tolerance: {RTOL:g}; absolute tolerance: {ATOL:g}.\n'+report['comparison']+'\n\n'+'\n'.join(report['issues'])

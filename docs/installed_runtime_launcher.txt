@@ -28,13 +28,11 @@ WHAT SETUP DOES
   settings folder, normally %LOCALAPPDATA%\SignalQC\installed-runtimes.
 - Installs the complete pinned Python dependency set for the selected version
   from PyPI. Only binary wheels are accepted; it does not install a compiler.
-- Installs the required R packages/dependencies from CRAN and Bioconductor
-  into private libraries. Versions are chosen for the installed R and recorded
+- Installs the required R packages/dependencies from CRAN
+  into a private library. Versions are chosen for the installed R and recorded
   in validated_*_versions.tsv inside the environment's R-library folder.
-- Installs the included RCTC 0.1.0 package for filtering and RCTC 0.2.4 for
-  intensity measures into separate libraries, preserving the existing methods.
-- Checks all 40 pinned Python package versions, scientific/interface imports,
-  all 51 required R packages, RotD routines and the R-to-Python connection.
+- Installs the included RCTC 0.1.0 package for filtering.
+- Checks the required Python and R packages and the R-to-Python connection.
 - Starts the app only after validation succeeds. Each processing worker uses
   the selected Python/R and private libraries. Existing project runtime paths
   are overridden for this session; data paths and scientific settings are not.
@@ -53,8 +51,7 @@ future runtime/package versions or numerical equivalence on every environment.
 No full waveform processing was run as part of these installer checks.
 
 First setup downloads several hundred megabytes and can take several minutes.
-It requires access to pypi.org/files.pythonhosted.org, cloud.r-project.org and
-Bioconductor's repositories/mirrors. Proxy/network restrictions may require IT
+It requires access to pypi.org/files.pythonhosted.org, cloud.r-project.org. Proxy/network restrictions may require IT
 assistance. TLS checks remain enabled. Setup does not bypass IT restrictions:
 the installed Python/R and compiled package libraries must be permitted.
 If compatible binaries cannot be installed or loaded, setup stops with a log;
@@ -63,4 +60,3 @@ it does not silently use bundled executables or start with missing packages.
 Official dependency installation references:
 https://pip.pypa.io/en/stable/cli/pip_install/
 https://stat.ethz.ch/R-manual/R-devel/library/utils/html/install.packages.html
-https://bioconductor.org/install/

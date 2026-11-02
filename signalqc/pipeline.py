@@ -90,17 +90,17 @@ class Pipeline:
 
     def _run(self):
         from .ncm_data_v1 import snapshot_tables
-        self.config=snapshot_tables(self.config,self.project.folder)
+        from .workflow_v2 import STAGES
         stages=self.config.get('stages',[])
+        if set(stages).difference(STAGES): raise ValueError('This project requests a processing stage unavailable in the paper edition.')
         if not stages: raise ValueError('Select at least one task to run.')
+        self.config=snapshot_tables(self.config,self.project.folder)
         self.emit('Preparing selected workflow.',type='run_started',stages=stages)
         setting_errors=method_setting_errors(self.config)
-        from .intensity_v1 import settings_errors
-        setting_errors+=settings_errors(self.config)
         if setting_errors: raise ValueError(' '.join(setting_errors))
         h5=mapping_files(self.config.get('hdf5_paths',[]),self.project.folder)
         reports=[]
-        if h5 and set(stages)!={"intensity"}:
+        if h5:
             normalized=[]
             for source in h5:
                 if self.cancelled.is_set(): break
@@ -151,7 +151,7 @@ class Pipeline:
             summary={'status':'cancelled','reports':reports,'hdf5_inputs':h5,'run_id':self.run_id}
             atomic_json(self.project.folder/'last_run.json',summary)
             return summary
-        if any(x in stages for x in ('acceptreject','filtering','sanity','intensity')) and not h5:
+        if any(x in stages for x in ('acceptreject','filtering','sanity')) and not h5:
             raise ValueError('No HDF5 inputs were selected or successfully generated.')
         if 'filtering' in stages and 'acceptreject' not in stages and not self.config.get('stage1_metadata'):
             raise ValueError('Select the existing accept/reject metadata when starting at filtering.')
@@ -285,23 +285,16 @@ class Pipeline:
             if stage=='filtering':
                 filtering=next((p for p in outputs if p.endswith('filmeta.csv')),next((p for p in outputs if p.endswith('filmeta.xlsx')),''))
                 if not filtering: raise RuntimeError('Filtering produced no metadata. Inspect its log.')
-        if 'intensity' in stages and not self.cancelled.is_set():
-            processed=next((p for r in reports if r.get('stage')=='filtering' and r.get('status') in ('completed','cached') for p in r.get('output_files',[]) if p.endswith(('.h5','.hdf5'))),'')
-            if 'filtering' in stages and not processed:
-                reports.append(dict(stage='intensity',input=path,status='skipped',message='Filtering produced no completed processed HDF5 for intensity measures.',output_files=[]))
-            else:
-                metadata=filtering if 'filtering' in stages else self.config.get('im_metadata','')
-                reports.append(self._intensity_job(processed or path,metadata))
         for stage in stages:
             if stage=='ingestion': continue
             report=next((r for r in reports if r.get('stage')==stage),None)
-            if not report or stage=='intensity' or report.get('status')=='skipped':
+            if not report or report.get('status')=='skipped':
                 self.emit(f'{stage}: '+str(report.get('status') if report else 'not run after earlier stage stopped'),
                           type='stage_finished',stage=stage,input=path,status=report.get('status','skipped') if report else 'not_run')
         if not result_tables:
             return reports
         try:
-            report=publish_results(self.project.folder,path,result_tables,[s for s in stages if s!='intensity'],reports)
+            report=publish_results(self.project.folder,path,result_tables,stages,reports)
             reports.append(report)
             # Record the public output separately; never make stage resume
             # depend on the workbook's timestamp or display formatting.
@@ -312,34 +305,6 @@ class Pipeline:
             reports.append({'stage':'results','input':path,'status':'failed','message':str(e),'output_files':[]})
             self.emit(f'{Path(path).name}: consolidated report could not be saved: {e}',level='error')
         return reports
-
-    def _intensity_job(self,path,metadata):
-        self.emit('Starting intensity measures.',type='stage_started',stage='intensity',input=path)
-        from .intensity_v1 import run_intensity, metadata_file, MEASURES
-        metadata=metadata_file(path,metadata)
-        engine=APP_ROOT/'engines'/'intensity'
-        inputs=[path]+([metadata] if metadata else [])+engine_inputs(engine)+[str(APP_ROOT/'signalqc'/'intensity_v1.py')]
-        inputs.extend(str(p) for p in (APP_ROOT/'runtime'/'R-IM-library'/'RCTC').rglob('*') if p.is_file())
-        settings={'im_measures':self.config.get('im_measures',list(MEASURES)),'rscript_executable':self.config.get('rscript_executable','')}
-        digest=signature(inputs,settings)
-        key,old=self.project.job('intensity',path,digest)
-        target=self._target('intensity',Path(path).stem,digest,old)
-        if self._cached(old):
-            outputs=json.loads(old['outputs'])
-            self.emit(f'{Path(path).name}: intensity measures already complete.')
-            return dict(stage='intensity',input=path,status='cached',output_files=outputs)
-        target.mkdir(parents=True,exist_ok=True)
-        self.project.update_job(key,'intensity',path,digest,'running',output_dir=target)
-        cfg=dict(self.config,input_hdf5=path,im_metadata=metadata,output_dir=str(target),
-                 cancel_file=str(self.cancel_file),processing_signature=digest)
-        try:
-            result=run_intensity(cfg,self.progress,self.cancelled.is_set)
-            self.project.update_job(key,'intensity',path,digest,result['status'],result.get('output_files',[]),result.get('message',''),output_dir=target)
-            return result
-        except Exception as exc:
-            self.project.update_job(key,'intensity',path,digest,'failed',message=str(exc),output_dir=target)
-            self.emit(f'{Path(path).name}: intensity measures failed: {exc}',level='error')
-            return dict(stage='intensity',input=path,status='failed',message=str(exc),output_files=[])
 
     @staticmethod
     def _stage_outputs(target):

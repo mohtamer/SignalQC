@@ -1,17 +1,14 @@
-SignalQC public preview — 26 October 2026
+SignalQC paper edition — 2 November 2026
 
 Example verified: event 20130511_020812 (11 May 2013, 02:08:12 UTC).
 Reference environment: bundled Windows 64-bit Python 3.12.14 and R 4.5.1.
 
-The example was run through accept/reject, filtering, sanity checks and all
-intensity-measure groups using the public edition's supplied settings.
+The example was run through accept/reject, filtering and sanity checks using the public edition's supplied settings.
 18 components accepted at Stage 1; 18 filtered; 12 sanity passes and 6 failures.
-RotD50 and RotD100 contain computed results for all six horizontal pairs.
 
 The packaged references were checked against the completed run:
 - 1,710 consolidated result cells
 - 54 waveform datasets, containing 1,678,122 samples
-- 9,420 intensity-measure cells
 Scientific workbook cells were preserved exactly during path conversion.
 Reference HDF5 arrays were preserved; only the input-file location was made relative.
 The comparison detects a deliberately altered waveform in a separate test copy.

@@ -62,7 +62,6 @@ def defaults():
                 python_executable=python, rscript_executable=str(r[-1]) if r else '',
                 matlab_executable=str(matlab[-1]) if matlab else '', default_bits=24,
                 waveform_format='auto', event_time_tolerance_s=0, scan_all_files=False,
-                im_metadata='', im_measures=['psa_h1','psa_h2','psa_v','rotd50','rotd100','gmrotd50','eas','fav','duration','cav'],
                 **method_defaults())
     config.update(ncm_defaults())
     from .runtime_env_v1 import runtime_config
@@ -97,6 +96,23 @@ class ProjectLock:
         if self.handle is not None:
             self.handle.close(); self.handle = None
 
+def _paper_project(config):
+    """Keep selected paper stages; a legacy IM-only project must select a task."""
+    config = dict(config)
+    config['stages'] = [s for s in config.get('stages', []) if s != 'intensity']
+    if config.get('interface_task') == 'ims':
+        config['interface_task'] = 'process'
+    config.pop('im_metadata', None)
+    config.pop('im_measures', None)
+    if 'interface_saved_inputs' in config:
+        saved = dict(config['interface_saved_inputs'])
+        saved.pop('im_metadata', None)
+        if 'processing_stages' in saved:
+            saved['processing_stages'] = [s for s in saved['processing_stages'] if s != 'intensity']
+        config['interface_saved_inputs'] = saved
+    return config
+
+
 class Project:
     def __init__(self, folder):
         self.folder = Path(folder).resolve()
@@ -105,6 +121,8 @@ class Project:
         self.config = defaults()
         if self.file.exists():
             self.config.update(json.loads(self.file.read_text(encoding='utf-8')))
+        self.retired_stage_removed = 'intensity' in self.config.get('stages', []) or self.config.get('interface_task') == 'ims'
+        self.config = _paper_project(self.config)
         self.config['python_executable'] = console_python(self.config['python_executable'])
         # A project copied from another computer must not keep nonexistent runtime paths.
         # Valid explicitly selected runtimes are retained.
@@ -145,6 +163,7 @@ class Project:
     def save(self, config=None):
         if config is not None:
             self.config.update(config)
+        self.config = _paper_project(self.config)
         self.config['updated_at'] = now()
         atomic_json(self.file, self.config)
 

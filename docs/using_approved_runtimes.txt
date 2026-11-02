@@ -52,13 +52,11 @@ ALL PACKAGES MATTER
   Scientific execution under arbitrary later versions is not guaranteed.
   Testing the launcher under 3.13/3.14 only verifies that it can select/start
   the included Python 3.12 environment.
-- Included R packages are in runtime\R-library and runtime\R-IM-library,
-  prepared with 64-bit R 4.5.1. The app still prefers these package folders
+- Included R packages are in runtime\R-library,
+  prepared with 64-bit R 4.5.1. The app still prefers this package folder
   when you select a different Rscript.exe. A different R version must be
   checked for binary compatibility; selecting Rscript does not install packages.
-- Filtering uses RCTC 0.1.0. Intensity measures use RCTC 0.2.4, including the
-  RotD spectral routines. Keep the separate libraries and both versions.
-- All processing stages, models and both package libraries must remain with
+- Filtering uses the included RCTC 0.1.0. Keep the runtime libraries with
   the app. Guo uses Python; MATLAB and PyCharm are not processing requirements.
 
 Normal startup and --python do NOT automatically install missing packages.

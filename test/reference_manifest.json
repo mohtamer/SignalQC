@@ -4,7 +4,6 @@
   "verified_date": "2026-10-26",
   "results_workbook": "2013_05_results.xlsx",
   "processed_hdf5": "2013_05_processed_2.h5",
-  "ims_workbook": "2013_05_processed_2_IMs_output.xlsx",
   "input_hdf5": "input/2013_05.h5",
   "settings": "sample_settings.json",
   "components": 18,
@@ -23,9 +22,6 @@
   },
   "notes": [
     "Check 5 is disabled. All 18 components pass Stage 1.",
-    "Sample high-pass fallback is 0.3 Hz; normal project default is 0.1 Hz.",
-    "IMs include all processed records, including records flagged by sanity checks. Inspect QC before scientific use."
-  ],
-  "RotD50_horizontal_pairs": 6,
-  "RotD100_horizontal_pairs": 6
+    "Sample high-pass fallback is 0.3 Hz; normal project default is 0.1 Hz."
+  ]
 }
