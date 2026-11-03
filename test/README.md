@@ -5,10 +5,8 @@ This example contains one earthquake, **11 May 2013 at 02:08:12 UTC** (event `20
 ## Run it
 
 1. Extract the complete app folder and open **Launch SignalQC.cmd**, or use one of the Python launchers described in the main README.
-2. Select **Process existing HDF5 files** → **Input data** → **Use included sample inputs**.
-3. Save the project in a **new empty local folder outside this test folder**.
-4. Open **Review and run**, scan the inputs, then start. Keep the sample settings unchanged.
-5. In **Results**, click **Compare sample results** and select your new project folder. Click **View sample reference results** to browse the supplied results without processing.
+2. On first launch, click **Run example**. SignalQC checks the preloaded inputs, creates a fresh project folder and runs all three stages. If an existing project is open, choose **Input data → Use included sample inputs** first.
+3. When **Results** opens, click **Compare sample results**. Use **Review and run → Open project folder** to find the generated files.
 
 The Reader can also open either supplied HDF5 directly. Running the example does not overwrite the reference files.
 

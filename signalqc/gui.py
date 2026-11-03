@@ -4,6 +4,7 @@ import copy
 import os
 from pathlib import Path
 import sys
+import tempfile
 import traceback
 
 from PySide6.QtCore import Qt,QThread,Signal,QTimer,QUrl,QAbstractTableModel,QSortFilterProxyModel
@@ -99,6 +100,7 @@ class Window(QMainWindow):
         self.resize(1280,800); self.setMinimumSize(1040,650)
         self.setStyleSheet(STYLE)
         self.project=None; self.worker=None; self.pipeline=None; self.preflight=None; self.config=defaults()
+        self.example_ready=False; self.run_after_scan=False; self.example_folder=None
         self.mapping={}; self.result_records=[]; self.display_records=[]; self.current_table=None
         shell=QWidget(); self.setCentralWidget(shell); row=QHBoxLayout(shell); row.setContentsMargins(0,0,0,0); row.setSpacing(0)
         sidebar=QWidget(); sidebar.setObjectName('sidebar'); sidebar.setFixedWidth(212); left=QVBoxLayout(sidebar); left.setContentsMargins(8,24,8,16)
@@ -117,6 +119,7 @@ class Window(QMainWindow):
         self.nav.currentRowChanged.connect(self.navigate); self.nav.setCurrentRow(0)
         self.statusBar().showMessage('Create or open a project to process data, or select Reader to view an HDF5 file.')
         if project: self.load_project(project)
+        else: self.sample_inputs()
 
     def page(self,title,subtitle):
         body=QWidget(); body.setObjectName('pageBody'); layout=QVBoxLayout(body); layout.setContentsMargins(28,22,28,22); layout.setSpacing(12)
@@ -415,6 +418,8 @@ class Window(QMainWindow):
         names={'ingestion':'HDF5 preparation','acceptreject':'Stage 1: accept / reject','filtering':'Stage 2: filtering','sanity':'Stage 3: sanity checks'}
         sequence=' → '.join(names[k] for k in cfg['stages']) or 'No processing stages selected'
         output=str(self.project.folder) if self.project else 'Choose a project folder when saving or starting the run.'
+        if self.example_ready:
+            output='A new sample project folder will be created automatically.'
         text=f'{sequence}\nProject folder: {output}\nWorkers: {cfg["workers"]}   |   Resume: {"enabled" if cfg["resume"] else "disabled"}'
         if 'acceptreject' in cfg['stages']:
             legacy=cfg['acceptreject_methods']==list('12345678') and cfg['acceptreject_required_votes']==5
@@ -425,7 +430,12 @@ class Window(QMainWindow):
         if self.preflight:
             errors=self.preflight.get('blocking_issues',[])
             text+='\n'+(f'{len(errors)} required input issue(s) must be resolved before running.' if errors else 'Input scan complete. Review the inventory and any notices below before running.')
+        elif self.example_ready: text+='\nRun example checks the bundled inputs and starts all three stages.'
         else: text+='\nScan the selected inputs before running. Changes to settings require a new scan.'
+        if self.example_ready: text='Included example ready · 11 May 2013 · 18 components from 3 stations\n'+text
+        self.run_button.setText('Run example' if self.example_ready else 'Run selected task')
+        self.custom_button.setVisible(self.example_ready)
+        self.scan_button.setVisible(not self.example_ready)
         self.run_summary.setText(text)
 
     def build_activity(self):
@@ -433,6 +443,7 @@ class Window(QMainWindow):
         self.run_summary=QLabel(); self.run_summary.setWordWrap(True); self.run_summary.setStyleSheet('background:white;border:1px solid #dde5ee;border-radius:8px;padding:16px;line-height:1.4;'); page.addWidget(self.run_summary)
         row=QHBoxLayout(); self.scan_button=QPushButton('Scan selected inputs'); self.scan_button.clicked.connect(self.scan); row.addWidget(self.scan_button)
         self.run_button=QPushButton('Run selected task'); self.run_button.setObjectName('primary'); self.run_button.setEnabled(False); self.run_button.clicked.connect(self.start_run); row.addWidget(self.run_button)
+        self.custom_button=QPushButton('Use my own data'); self.custom_button.clicked.connect(self.use_own_data); row.addWidget(self.custom_button)
         self.pause_button=QPushButton('Pause safely'); self.pause_button.setEnabled(False); self.pause_button.clicked.connect(self.pause); row.addWidget(self.pause_button)
         openout=QPushButton('Open project folder'); openout.clicked.connect(lambda:self.open_path(self.project.folder) if self.project else None); row.addWidget(openout); row.addStretch(); page.addLayout(row)
         stats=QHBoxLayout(); self.stats={}; self.stats_boxes={}
@@ -591,6 +602,9 @@ class Window(QMainWindow):
         return bool(self.preflight) and not self.preflight.get('blocking_issues')
     def invalidate(self,*args):
         self.preflight=None
+        if self.example_ready:
+            self.example_ready=False
+            self.project_label.setText('No project open')
         if hasattr(self,'run_button'): self.run_button.setEnabled(False)
         if hasattr(self,'runtime_info') and not getattr(self,'_applying_config',False): self.update_review()
     def new_project(self):
@@ -611,6 +625,11 @@ class Window(QMainWindow):
                 'This project included intensity measures, which are unavailable in the paper edition. Review the remaining stages.'
                 if self.project.retired_stage_removed else 'Project opened: '+str(self.project.folder))
         except Exception as e: self.error(str(e))
+    def use_own_data(self):
+        if self.busy(): return
+        self.apply_config(defaults())
+        self.nav.setCurrentRow(0)
+        self.statusBar().showMessage('Choose a task for your own recordings.')
     def save(self):
         if not self.project:
             self.new_project()
@@ -623,9 +642,13 @@ class Window(QMainWindow):
         try:
             cfg=sample_config()
             self.project=None
-            self.project_label.setText('Sample loaded — choose a new project folder for your run')
             self.apply_config(cfg)
-            self.statusBar().showMessage('Sample inputs and recorded settings loaded. Save into a new folder; reference results stay in test/reference_results.')
+            self.example_ready=True
+            self.project_label.setText('Included example ready')
+            self.nav.setCurrentRow(3); self.update_review()
+            self.inventory_text.setPlainText('Waveforms, event catalogue, station metadata and processing settings are loaded.')
+            self.run_button.setEnabled(True); self.run_button.setFocus()
+            self.statusBar().showMessage('Press Run example to process the included recordings.')
         except Exception as exc:self.error(str(exc))
 
     def launch(self,function,on_result):
@@ -634,12 +657,17 @@ class Window(QMainWindow):
         self.worker.finished.connect(self.finish_worker); self.scan_button.setEnabled(False); self.open_button.setEnabled(False); self.new_button.setEnabled(False); self.worker.start()
     def finish_worker(self):
         self.scan_button.setEnabled(True); self.open_button.setEnabled(True); self.new_button.setEnabled(True); self.pause_button.setEnabled(False)
-        self.run_button.setEnabled(self.can_run())
+        self.custom_button.setEnabled(True)
+        self.run_button.setEnabled(self.can_run() or self.example_ready)
         self.pipeline=None
         self.refresh_jobs()
+        if self.run_after_scan:
+            self.run_after_scan=False
+            if self.example_ready and self.can_run():
+                QTimer.singleShot(0,lambda: self.start_run() if self.example_ready and self.can_run() else None)
     def scan(self):
         if self.busy(): return
-        cfg=self.collect(); self.invalidate(); self.inventory_text.setPlainText('Reading file inventory and waveform headers…')
+        cfg=self.collect(); self.preflight=None; self.run_button.setEnabled(False); self.inventory_text.setPlainText('Reading file inventory and waveform headers…')
         self.nav.setCurrentRow(3)
         def inspect(progress):
             result=inspect_inputs(relevant_input_config(cfg),self.project.folder if self.project else None,progress)
@@ -675,6 +703,9 @@ class Window(QMainWindow):
         if self.project: atomic_json(self.project.folder/'input_scan.json',result)
     def start_run(self):
         if self.busy(): return
+        if self.example_ready and not self.can_run():
+            self.run_after_scan=True; self.custom_button.setEnabled(False)
+            self.scan(); return
         if not self.can_run(): self.error('Scan the selected inputs and resolve the required input issues before starting.'); return
         issues=validate_workflow(self.collect(),self.preflight)
         if issues: self.error('\n'.join(issues)); self.invalidate(); return
@@ -686,7 +717,17 @@ class Window(QMainWindow):
             cfg=self.collect();files=review_hdf5_files(cfg,self.project.folder if self.project else None)
             if hdf5_review_fingerprint(cfg,files)!=self.preflight['hdf5_review_fingerprint']:
                 self.invalidate();self.error('HDF5 files or mapped metadata changed after the scan. Scan again to review current values.');return
-        if not self.save(): return
+        if self.example_ready:
+            try:
+                folder=tempfile.mkdtemp(prefix='SignalQC-example-',dir=default_projects_dir())
+                self.project=Project(folder)
+                self.save()
+                atomic_json(self.project.folder/'input_scan.json',self.preflight)
+            except OSError as exc:
+                self.project=None; self.error('Could not create the sample project: '+str(exc)); return
+            self.example_folder=self.project.folder
+            self.example_ready=False; self.update_review()
+        elif not self.save(): return
         cfg=self.collect()
         self.pipeline=Pipeline(self.project); runner=self.pipeline
         self.progress_panel.begin(cfg['stages'])
@@ -699,6 +740,9 @@ class Window(QMainWindow):
     def completed(self,result):
         self.log.appendPlainText('Saved run result: '+result.get('status','finished')); self.progress_panel.finish(result.get('status','finished'))
         self.activity_label.setText(result.get('status','finished').replace('_',' ').title()); self.refresh_results(); self.run_button.setEnabled(self.can_run() and not self.busy())
+        if self.project.folder==self.example_folder and result.get('status')=='completed':
+            self.nav.setCurrentRow(4)
+            self.statusBar().showMessage('Example complete. Choose Compare sample results to check this run against the reference.')
     def on_progress(self,event):
         message=event.get('message',str(event)) if isinstance(event,dict) else str(event)
         if message.startswith('SIGNALQC_EVENT '):
@@ -877,7 +921,7 @@ class Window(QMainWindow):
 
     def compare_sample_results(self):
         if self.busy():return
-        folder=QFileDialog.getExistingDirectory(self,'Choose your completed sample project folder',str(self.project.folder if self.project else default_projects_dir()))
+        folder=self.example_folder if self.project and self.project.folder==self.example_folder else QFileDialog.getExistingDirectory(self,'Choose your completed sample project folder',str(self.project.folder if self.project else default_projects_dir()))
         if not folder:return
         from .sample_compare_v1 import compare_sample,format_report
         def display(result):
@@ -959,7 +1003,7 @@ def main():
             except OSError: pass
         QTimer.singleShot(0,acknowledge_startup)
     def remember():
-        if window.project:
+        if window.project and window.project.folder!=window.example_folder:
             try: atomic_json(preferences,{'last_project':str(window.project.folder)})
             except OSError: pass
     app.aboutToQuit.connect(remember)

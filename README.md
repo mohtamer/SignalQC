@@ -8,7 +8,7 @@ Repository: [github.com/mohtamer/SignalQC](https://github.com/mohtamer/SignalQC)
 
 ## Start here
 
-**[Download the complete Windows app](https://github.com/mohtamer/SignalQC/releases/download/v2026.11.02/SignalQC_Public_2026-11-02.zip)** for offline use, or follow the source instructions below.
+**[Download the complete Windows app](https://github.com/mohtamer/SignalQC/releases/download/v2026.11.03/SignalQC_Public_2026-11-03.zip)** for offline use. Extract it, open **Launch SignalQC.cmd**, and press **Run example**. The source instructions follow below.
 
 | Package | How to open it | What you need |
 |---|---|---|
@@ -25,11 +25,10 @@ The reference environment is Python **3.12.14** and R **4.5.1**. Later interpret
 
 The `test` folder contains one earthquake: **11 May 2013, 02:08:12 UTC**, magnitude **6.3 Mwp**. There are **18 waveform components** from **AE.AJN, AE.ALN and AE.MSF**, including HH and HN recordings. The input HDF5 already contains response-corrected acceleration and the original counts required by the clipping check. Instrument-response files are therefore unnecessary for this demonstration.
 
-1. Open SignalQC and select **Process existing HDF5 files**.
-2. Go to **Input data** and click **Use included sample inputs**. This loads the HDF5, station sheet and recorded processing settings.
-3. Click **Save project** and choose a **new empty folder**, for example `Documents/SignalQC sample run`. Keep this outside the supplied `test` folder.
-4. Go to **Review and run**, scan the inputs, review the counts, then start processing. Leave the sample settings unchanged for comparison.
-5. When processing finishes, open **Results**. Compare your results with `test/reference_results` using **Compare sample results**. You can also use **Browse existing results folder** to view the reference tables and HDF5 directly.
+1. On first launch, the app opens **Review and run** with the example inputs and settings loaded. Press **Run example**. SignalQC checks the inputs, creates a fresh project in your user folder, and runs all three stages.
+2. When **Results** opens, choose **Compare sample results** to check the run against the supplied reference. To find the output files, choose **Review and run → Open project folder**.
+
+If SignalQC reopens one of your own projects, **Input data → Use included sample inputs** brings back the example.
 
 The reference outcome is **18 accepted components at Stage 1**, followed by **12 passes and 6 failures at Stage 3**. This example demonstrates rejection during the sanity checks; it does not demonstrate a Stage 1 rejection. A QC failure is a recorded scientific outcome, not an application failure.
 
@@ -39,7 +38,7 @@ Expected numerical values are supplied in the reference workbooks and processed 
 
 ## Use your own data
 
-Start with **Select task**. The following screens show only the inputs required for that task.
+From the preloaded example, choose **Use my own data** to start with a blank configuration. Then choose a task. The following screens show only the inputs required for that task.
 
 | Task | Inputs |
 |---|---|
