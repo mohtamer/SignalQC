@@ -47,6 +47,6 @@ The comparison checks event/trace identities and categorical outcomes exactly, a
 
 All 54 processed waveform datasets (18 × acceleration/velocity/displacement) are compared. A blank individual classifier score may reflect early stopping; its adjacent status explains this.
 
-The reference workbook uses relative links, so keep the complete test folder together. To rerun, create another empty project folder; do not use the reference results as processing inputs.
+The reference workbook uses relative links, so keep the complete test folder together. To repeat the example in a fresh project, choose **Input data → Use included sample inputs**, then **Run example**.
 
 NCM supplied the sample waveforms and metadata. Their data-access terms remain applicable; the example does not provide access to the wider archive.

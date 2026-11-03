@@ -8,7 +8,7 @@ Repository: [github.com/mohtamer/SignalQC](https://github.com/mohtamer/SignalQC)
 
 ## Start here
 
-**[Download the complete Windows app](https://github.com/mohtamer/SignalQC/releases/download/v2026.11.03/SignalQC_Public_2026-11-03.zip)** for offline use. Extract it, open **Launch SignalQC.cmd**, and press **Run example**. The source instructions follow below.
+**[Download the complete Windows app](https://github.com/mohtamer/SignalQC/releases/download/v2026.11.03.1/SignalQC_Public_2026-11-03_1.zip)** for offline use. Extract it, open **Launch SignalQC.cmd**, and press **Run example**. The source instructions follow below.
 
 | Package | How to open it | What you need |
 |---|---|---|
@@ -106,7 +106,7 @@ Start with **2 workers** on a laptop. Increase gradually if memory permits. Work
 | R shortcut selected instead of Rscript | Select a path such as `C:\Program Files\R\R-4.5.1\bin\Rscript.exe`, not the Start Menu shortcut folder. |
 | No events match raw files | Check catalogue filename stems and UTC origin/start times, then rescan. |
 | HDF5 has unexpected names or layers | Use the optional data-mapping review. |
-| Results differ from the example | Use the sample button, a new empty project, identical input data/settings and the bundled reference runtime. Run the included comparison and inspect any reported differences. |
+| Results differ from the example | Press **Run example** with the bundled Windows runtime and recorded settings. Open **Results → Compare sample results** to see where the outputs differ. |
 
 See [installed-runtime setup](docs/installed_runtime_launcher.txt) for the alternate launcher. Use **Check SignalQC.py** for runtime diagnostics without processing waveforms.
 
@@ -114,4 +114,4 @@ See [installed-runtime setup](docs/installed_runtime_launcher.txt) for the alter
 
 The public edition retains the NCM edition's processing engines, trained models and scientific defaults. It changes the packaged data and input interface, not the computational equations. Historical `ncm` suffixes in engine filenames identify their development lineage; they do not select a hidden NCM dataset. Method names such as **NCM NN** identify the trained classifier and are retained.
 
-Please cite the accompanying manuscript and the version of SignalQC used. No DOI is assigned by this package. Third-party runtimes, libraries and routines retain their own notices; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). NCM waveform and metadata access remains subject to NCM's data-access terms; inclusion of this example does not grant access to the wider archive.
+Please cite the accompanying manuscript and the version of SignalQC used. NCM’s data-access terms apply to its waveforms and metadata. The licenses for the bundled runtimes, libraries and routines are listed in the [third-party notices](THIRD_PARTY_NOTICES.md).

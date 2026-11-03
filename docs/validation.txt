@@ -1,4 +1,4 @@
-SignalQC paper edition — 2 November 2026
+SignalQC paper edition — 3 November 2026
 
 Example verified: event 20130511_020812 (11 May 2013, 02:08:12 UTC).
 Reference environment: bundled Windows 64-bit Python 3.12.14 and R 4.5.1.
@@ -21,9 +21,8 @@ and three-station sheet, input scan with no preflight errors, opening all three
 processed waveform plots from a result row, and opening its diagnostic figure.
 The portable launcher passed its Python dependency check.
 
-No processing equations or active scientific engine files were changed for this
-public preparation. The metadata worksheet binding was corrected so an omitted
-worksheet selects the first sheet, allowing station ADC resolution to be read.
+On first launch, Run example loaded the bundled recordings and ran all three
+stages in a fresh project. The output matched the reference counts above.
 
 This validation covers the included event and runtime. Different input formats,
 interpreter/package versions and organizational security policies may require
