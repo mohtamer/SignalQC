@@ -8,7 +8,7 @@ Repository: [github.com/mohtamer/SignalQC](https://github.com/mohtamer/SignalQC)
 
 ## Start here
 
-**[Download the complete Windows app](https://github.com/mohtamer/SignalQC/releases/download/v2026.11.03.1/SignalQC_Public_2026-11-03_1.zip)** for offline use. Extract it, open **Launch SignalQC.cmd**, and press **Run example**. The source instructions follow below.
+**[Download the complete Windows app](https://github.com/mohtamer/SignalQC/releases/download/v2026.11.03.2/SignalQC_Public_2026-11-03_2.zip)** for offline use. Extract it, open **Launch SignalQC.cmd**, and press **Run example** on the **Overview** screen.
 
 | Package | How to open it | What you need |
 |---|---|---|
@@ -25,10 +25,10 @@ The reference environment is Python **3.12.14** and R **4.5.1**. Later interpret
 
 The `test` folder contains one earthquake: **11 May 2013, 02:08:12 UTC**, magnitude **6.3 Mwp**. There are **18 waveform components** from **AE.AJN, AE.ALN and AE.MSF**, including HH and HN recordings. The input HDF5 already contains response-corrected acceleration and the original counts required by the clipping check. Instrument-response files are therefore unnecessary for this demonstration.
 
-1. On first launch, the app opens **Review and run** with the example inputs and settings loaded. Press **Run example**. SignalQC checks the inputs, creates a fresh project in your user folder, and runs all three stages.
+1. SignalQC opens on **Overview** every time. Press **Run example** under **Included example**. SignalQC checks the preloaded inputs, creates a fresh project in your user folder, and runs all three stages.
 2. When **Results** opens, choose **Compare sample results** to check the run against the supplied reference. To find the output files, choose **Review and run → Open project folder**.
 
-If SignalQC reopens one of your own projects, **Input data → Use included sample inputs** brings back the example.
+To continue a saved project instead, choose **Reopen last project** on **Overview** or **Open project** in the sidebar.
 
 The reference outcome is **18 accepted components at Stage 1**, followed by **12 passes and 6 failures at Stage 3**. This example demonstrates rejection during the sanity checks; it does not demonstrate a Stage 1 rejection. A QC failure is a recorded scientific outcome, not an application failure.
 

@@ -5,7 +5,7 @@ This example contains one earthquake, **11 May 2013 at 02:08:12 UTC** (event `20
 ## Run it
 
 1. Extract the complete app folder and open **Launch SignalQC.cmd**, or use one of the Python launchers described in the main README.
-2. On first launch, click **Run example**. SignalQC checks the preloaded inputs, creates a fresh project folder and runs all three stages. If an existing project is open, choose **Input data → Use included sample inputs** first.
+2. On the opening **Overview** screen, click **Run example**. SignalQC checks the preloaded inputs, creates a fresh project folder and runs all three stages.
 3. When **Results** opens, click **Compare sample results**. Use **Review and run → Open project folder** to find the generated files.
 
 The Reader can also open either supplied HDF5 directly. Running the example does not overwrite the reference files.
@@ -47,6 +47,6 @@ The comparison checks event/trace identities and categorical outcomes exactly, a
 
 All 54 processed waveform datasets (18 × acceleration/velocity/displacement) are compared. A blank individual classifier score may reflect early stopping; its adjacent status explains this.
 
-The reference workbook uses relative links, so keep the complete test folder together. To repeat the example in a fresh project, choose **Input data → Use included sample inputs**, then **Run example**.
+The reference workbook uses relative links, so keep the complete test folder together. To repeat the example in a fresh project, choose **Overview → Run example**.
 
 NCM supplied the sample waveforms and metadata. Their data-access terms remain applicable; the example does not provide access to the wider archive.

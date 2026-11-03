@@ -27,6 +27,7 @@ from .theme_v1 import STYLE as BASE_STYLE, apply_theme, configure_accessibility
 from .accessible_controls_v1 import TaskChoice, TASK_CHOICE_STYLE
 
 STYLE = BASE_STYLE + TASK_CHOICE_STYLE
+OVERVIEW_PAGE, TASK_PAGE, INPUTS_PAGE, OPTIONS_PAGE, RUN_PAGE, RESULTS_PAGE = range(6)
 
 class FrequencySpinBox(QDoubleSpinBox):
     def textFromValue(self,value):
@@ -94,19 +95,20 @@ class Paths(QWidget):
     def set_values(self,values): self.list.clear(); self.list.addItems(values)
 
 class Window(QMainWindow):
-    def __init__(self,project=None):
+    def __init__(self,project=None,last_project=None):
         apply_theme(QApplication.instance())
         super().__init__(); self.setWindowTitle('SignalQC · Automated Signal Processing & Quality Control')
         self.resize(1280,800); self.setMinimumSize(1040,650)
         self.setStyleSheet(STYLE)
         self.project=None; self.worker=None; self.pipeline=None; self.preflight=None; self.config=defaults()
         self.example_ready=False; self.run_after_scan=False; self.example_folder=None
+        self.example_window=None
         self.mapping={}; self.result_records=[]; self.display_records=[]; self.current_table=None
         shell=QWidget(); self.setCentralWidget(shell); row=QHBoxLayout(shell); row.setContentsMargins(0,0,0,0); row.setSpacing(0)
         sidebar=QWidget(); sidebar.setObjectName('sidebar'); sidebar.setFixedWidth(212); left=QVBoxLayout(sidebar); left.setContentsMargins(8,24,8,16)
         brand=QLabel('  SignalQC'); brand.setStyleSheet('font-size:23pt;font-weight:700;color:white'); left.addWidget(brand)
         tagline=QLabel('    Signal processing and QC'); tagline.setStyleSheet('font-size:9pt;color:#aec4d6'); left.addWidget(tagline); left.addSpacing(24)
-        self.nav=QListWidget(); self.nav.setObjectName('nav'); self.nav.setAccessibleName('Application sections'); self.nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff); self.nav.addItems(['1   Select task','2   Input data','3   Processing options','4   Review and run','Results','Reader','User guide','Runtime settings']); left.addWidget(self.nav)
+        self.nav=QListWidget(); self.nav.setObjectName('nav'); self.nav.setAccessibleName('Application sections'); self.nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff); self.nav.addItems(['Overview','1   Select task','2   Input data','3   Processing options','4   Review and run','Results','Reader','User guide','Runtime settings']); left.addWidget(self.nav)
         self.project_label=QLabel('No project open'); self.project_label.setWordWrap(True); self.project_label.setMaximumWidth(190); self.project_label.setStyleSheet('font-size:10pt;color:#c5d9e7;padding:10px;'); left.addWidget(self.project_label)
         self.open_button=QPushButton('Open project'); self.open_button.clicked.connect(self.open_project); left.addWidget(self.open_button)
         self.new_button=QPushButton('New project'); self.new_button.clicked.connect(self.new_project); left.addWidget(self.new_button)
@@ -114,12 +116,13 @@ class Window(QMainWindow):
         credit=QLabel('Developed by Mohamed T. Hussein & Tadahiro Kishida'); credit.setWordWrap(True)
         credit.setStyleSheet('font-size:9pt;color:#d9e6ef;padding:6px 5px;'); left.addWidget(credit)
         row.addWidget(sidebar); self.pages=QStackedWidget(); row.addWidget(self.pages,1)
-        self.build_task(); self.build_inputs(); self.build_workflow(); self.build_activity(); self.build_results(); self.build_reader(); self.build_help(); self.build_runtime()
+        self.build_overview(last_project); self.build_task(); self.build_inputs(); self.build_workflow(); self.build_activity(); self.build_results(); self.build_reader(); self.build_help(); self.build_runtime()
         configure_accessibility(self)
-        self.nav.currentRowChanged.connect(self.navigate); self.nav.setCurrentRow(0)
-        self.statusBar().showMessage('Create or open a project to process data, or select Reader to view an HDF5 file.')
+        self.nav.currentRowChanged.connect(self.navigate)
         if project: self.load_project(project)
         else: self.sample_inputs()
+        self.nav.setCurrentRow(OVERVIEW_PAGE)
+        self.overview_run.setFocus()
 
     def page(self,title,subtitle):
         body=QWidget(); body.setObjectName('pageBody'); layout=QVBoxLayout(body); layout.setContentsMargins(28,22,28,22); layout.setSpacing(12)
@@ -143,7 +146,7 @@ class Window(QMainWindow):
 
     def navigate(self,index):
         self.pages.setCurrentIndex(index)
-        if index==3: self.update_review()
+        if index==RUN_PAGE: self.update_review()
 
     def next_step(self,page,index,label):
         row=QHBoxLayout(); row.addStretch()
@@ -151,6 +154,44 @@ class Window(QMainWindow):
         button.clicked.connect(lambda:self.nav.setCurrentRow(index)); row.addWidget(button)
         page.addLayout(row)
         return button
+
+    def build_overview(self,last_project):
+        page=self.page('Overview','Try SignalQC with the included recordings, or open a project to process your own data.')
+        box=QGroupBox('Included example'); content=QVBoxLayout(box)
+        description=QLabel('Process 18 waveform components from three stations through screening, filtering and sanity checks. The inputs and settings are included. Results are saved in a new project folder.')
+        description.setWordWrap(True); content.addWidget(description)
+        self.overview_run=QPushButton('Run example'); self.overview_run.setObjectName('primary')
+        self.overview_run.clicked.connect(self.run_overview_example); content.addWidget(self.overview_run,alignment=Qt.AlignLeft)
+        page.addWidget(box)
+        own=QPushButton('Use my own data')
+        own.clicked.connect(lambda: self.use_own_data() if self.example_ready else self.nav.setCurrentRow(TASK_PAGE))
+        page.addWidget(own,alignment=Qt.AlignLeft)
+        if last_project:
+            reopen=QPushButton('Reopen last project'); reopen.setToolTip(str(last_project))
+            reopen.clicked.connect(lambda: self.reopen_from_overview(last_project))
+            page.addWidget(reopen,alignment=Qt.AlignLeft)
+        page.addStretch()
+
+    def reopen_from_overview(self,folder):
+        if self.busy(): return
+        if not (Path(folder)/'project.json').is_file():
+            self.error('The previous project is no longer at this location. Use Open project to locate it.')
+            return
+        self.load_project(folder)
+
+    def run_overview_example(self):
+        if self.busy(): return
+        if self.project and self.project.folder==self.example_folder:
+            self.sample_inputs()
+        if self.example_ready:
+            self.start_run()
+            return
+        # Keep the user's current project and any unsaved inputs in their own window.
+        if self.example_window is None or not self.example_window.isVisible():
+            self.example_window=Window()
+            if not self.example_window.example_ready: return
+        self.example_window.showNormal(); self.example_window.raise_(); self.example_window.activateWindow()
+        self.example_window.run_overview_example()
 
     def build_task(self):
         page=self.page('Select a task','Choose the starting point for this project. The following steps show only the inputs and options required for your selection.')
@@ -177,7 +218,7 @@ class Window(QMainWindow):
         self.stage_hint=QLabel(); self.stage_hint.setWordWrap(True); self.stage_hint.setStyleSheet('color:#40576e;padding-top:8px;'); stages.addWidget(self.stage_hint); page.addWidget(self.stage_panel)
         saved=QLabel('To continue a previous run, open its saved project. To inspect existing results without processing, select Results in the sidebar.')
         saved.setWordWrap(True); saved.setStyleSheet('color:#485b70;'); page.addWidget(saved)
-        page.addStretch(); self.next_step(page,1,'Continue to input data')
+        page.addStretch(); self.next_step(page,INPUTS_PAGE,'Continue to input data')
 
     def task_key(self):
         return next((key for key,button in self.task_buttons.items() if button.isChecked()),'process')
@@ -225,18 +266,18 @@ class Window(QMainWindow):
         note=QLabel('Select the matching consolidated results workbook or a compatible table from the earlier stage. Record identifiers must match the selected HDF5 files.'); note.setWordWrap(True); ef.addRow(note); page.addWidget(self.previous_box)
         self.sample_button=QPushButton('Use included sample inputs'); self.sample_button.clicked.connect(self.sample_inputs)
         page.addWidget(self.sample_button,alignment=Qt.AlignLeft)
-        page.addStretch(); self.inputs_next=self.next_step(page,2,'Continue to processing options')
+        page.addStretch(); self.inputs_next=self.next_step(page,OPTIONS_PAGE,'Continue to processing options')
         self.inputs_next.clicked.disconnect();self.inputs_next.clicked.connect(self.continue_from_inputs)
 
     def continue_from_inputs(self):
         if not self.layout_options.isChecked():
-            self.nav.setCurrentRow(2); return
+            self.nav.setCurrentRow(OPTIONS_PAGE); return
         from .hdf5_profiles_v1 import mapping_files,mapping_for_source
         if self.task_key()=='process' or self.task_key()=='prepare_process' and self.include_existing.isChecked():
             files=mapping_files(self.hdf5_paths.values(),self.project.folder if self.project else None)
             if files and any(not mapping_for_source(self.config,path) for path in files):
                 if not self.edit_hdf5_mapping():return
-        self.nav.setCurrentRow(2)
+        self.nav.setCurrentRow(OPTIONS_PAGE)
 
     def edit_hdf5_mapping(self):
         if self.busy(): return False
@@ -283,7 +324,7 @@ class Window(QMainWindow):
         for widget in [self.remove_response,self.figures,self.resume,self.scan_all,*self.checks.values()]: widget.stateChanged.connect(self.stage_selection_changed)
         for widget in [self.bits,self.workers]: widget.valueChanged.connect(self.invalidate)
         self.suffix.textChanged.connect(self.invalidate)
-        page.addStretch(); self.next_step(page,3,'Continue to review')
+        page.addStretch(); self.next_step(page,RUN_PAGE,'Continue to review')
 
     def select_workbook_sheet(self,name):
         path=getattr(self,'selected_workbook',None)
@@ -621,6 +662,7 @@ class Window(QMainWindow):
         try:
             self.project=Project(folder); self.apply_config(self.project.config)
             self.project_label.setText(self.project.config['name']+'\n'+str(self.project.folder))
+            self.nav.setCurrentRow(TASK_PAGE)
             self.refresh_jobs(); self.refresh_results(); self.statusBar().showMessage(
                 'This project included intensity measures, which are unavailable in the paper edition. Review the remaining stages.'
                 if self.project.retired_stage_removed else 'Project opened: '+str(self.project.folder))
@@ -628,7 +670,7 @@ class Window(QMainWindow):
     def use_own_data(self):
         if self.busy(): return
         self.apply_config(defaults())
-        self.nav.setCurrentRow(0)
+        self.nav.setCurrentRow(TASK_PAGE)
         self.statusBar().showMessage('Choose a task for your own recordings.')
     def save(self):
         if not self.project:
@@ -645,7 +687,7 @@ class Window(QMainWindow):
             self.apply_config(cfg)
             self.example_ready=True
             self.project_label.setText('Included example ready')
-            self.nav.setCurrentRow(3); self.update_review()
+            self.nav.setCurrentRow(RUN_PAGE); self.update_review()
             self.inventory_text.setPlainText('Waveforms, event catalogue, station metadata and processing settings are loaded.')
             self.run_button.setEnabled(True); self.run_button.setFocus()
             self.statusBar().showMessage('Press Run example to process the included recordings.')
@@ -654,10 +696,11 @@ class Window(QMainWindow):
     def launch(self,function,on_result):
         if self.busy(): return
         self.worker=Work(function); self.worker.progress.connect(self.on_progress); self.worker.result.connect(on_result); self.worker.error.connect(self.error)
-        self.worker.finished.connect(self.finish_worker); self.scan_button.setEnabled(False); self.open_button.setEnabled(False); self.new_button.setEnabled(False); self.worker.start()
+        self.worker.finished.connect(self.finish_worker); self.scan_button.setEnabled(False); self.open_button.setEnabled(False); self.new_button.setEnabled(False); self.overview_run.setEnabled(False); self.worker.start()
     def finish_worker(self):
         self.scan_button.setEnabled(True); self.open_button.setEnabled(True); self.new_button.setEnabled(True); self.pause_button.setEnabled(False)
         self.custom_button.setEnabled(True)
+        self.overview_run.setEnabled(True)
         self.run_button.setEnabled(self.can_run() or self.example_ready)
         self.pipeline=None
         self.refresh_jobs()
@@ -668,7 +711,7 @@ class Window(QMainWindow):
     def scan(self):
         if self.busy(): return
         cfg=self.collect(); self.preflight=None; self.run_button.setEnabled(False); self.inventory_text.setPlainText('Reading file inventory and waveform headers…')
-        self.nav.setCurrentRow(3)
+        self.nav.setCurrentRow(RUN_PAGE)
         def inspect(progress):
             result=inspect_inputs(relevant_input_config(cfg),self.project.folder if self.project else None,progress)
             if cfg.get('event_catalog') or cfg.get('station_catalog'):
@@ -731,8 +774,8 @@ class Window(QMainWindow):
         cfg=self.collect()
         self.pipeline=Pipeline(self.project); runner=self.pipeline
         self.progress_panel.begin(cfg['stages'])
-        self.run_button.setEnabled(False); self.pause_button.setEnabled(True); self.nav.setCurrentRow(3)
-        QTimer.singleShot(0,lambda:self.pages.widget(3).ensureWidgetVisible(self.progress_panel,0,15))
+        self.run_button.setEnabled(False); self.pause_button.setEnabled(True); self.nav.setCurrentRow(RUN_PAGE)
+        QTimer.singleShot(0,lambda:self.pages.widget(RUN_PAGE).ensureWidgetVisible(self.progress_panel,0,15))
         self.launch(lambda emit: self._run_pipeline(runner,emit),self.completed)
     def _run_pipeline(self,runner,emit): runner.progress=emit; return runner.run()
     def pause(self):
@@ -741,7 +784,7 @@ class Window(QMainWindow):
         self.log.appendPlainText('Saved run result: '+result.get('status','finished')); self.progress_panel.finish(result.get('status','finished'))
         self.activity_label.setText(result.get('status','finished').replace('_',' ').title()); self.refresh_results(); self.run_button.setEnabled(self.can_run() and not self.busy())
         if self.project.folder==self.example_folder and result.get('status')=='completed':
-            self.nav.setCurrentRow(4)
+            self.nav.setCurrentRow(RESULTS_PAGE)
             self.statusBar().showMessage('Example complete. Choose Compare sample results to check this run against the reference.')
     def on_progress(self,event):
         message=event.get('message',str(event)) if isinstance(event,dict) else str(event)
@@ -989,12 +1032,13 @@ def main():
     project=sys.argv[1] if len(sys.argv)>1 else None
     preferences=user_state_dir()/'preferences.json'
     previous=preferences if preferences.exists() else APP_ROOT/'preferences.json'
+    last_project=None
     if not project and previous.exists():
         try:
             last=json.loads(previous.read_text()).get('last_project','')
-            if Path(last,'project.json').is_file(): project=last
+            if last and Path(last,'project.json').is_file(): last_project=last
         except (ValueError,OSError): pass
-    window=Window(project); window.show()
+    window=Window(project,last_project); window.show()
     ready_file=os.environ.pop('SIGNALQC_STARTUP_READY_FILE',None)
     if ready_file:
         # Acknowledge only after Qt has entered the event loop and shown the window.

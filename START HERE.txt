@@ -11,12 +11,12 @@ Select python.exe and Rscript.exe, then click Set up and open SignalQC.
 The first setup needs internet access to install packages into your user folder.
 
 TRY THE SAMPLE
-Press Run example. The recordings, metadata and settings are already loaded.
+On the opening Overview screen, press Run example. The recordings, metadata and settings are already loaded.
 SignalQC checks the inputs, creates a project folder and runs all three stages.
 Results opens when the example finishes. Choose Compare sample results to check it.
 
 For your own recordings, choose Use my own data.
-To load the example from an existing project, choose Input data > Use included sample inputs.
+Overview also offers Reopen last project if you previously saved a project.
 
 The sample input, reference outputs and instructions are in test.
 Read README.md for the complete guide and setup requirements.
