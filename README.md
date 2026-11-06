@@ -6,6 +6,8 @@ SignalQC is a Windows desktop application for automated seismic waveform process
 
 Repository: [github.com/mohtamer/SignalQC](https://github.com/mohtamer/SignalQC)
 
+**Supplementary Data S1:** [Download the Excel workbook](https://github.com/mohtamer/SignalQC/raw/refs/heads/main/S1.xlsx).
+
 ## Start here
 
 **[Download the complete Windows app](https://github.com/mohtamer/SignalQC/releases/download/v2026.11.03.2/SignalQC_Public_2026-11-03_2.zip)** for offline use. Extract it, open **Launch SignalQC.cmd**, and press **Run example** on the **Overview** screen.
