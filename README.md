@@ -8,6 +8,32 @@ Repository: [github.com/mohtamer/SignalQC](https://github.com/mohtamer/SignalQC)
 
 **Supplementary Data S1:** [Download the Excel workbook](https://github.com/mohtamer/SignalQC/raw/refs/heads/main/S1.xlsx).
 
+## Files and folders
+
+| File or folder | Description |
+|---|---|
+| [assets/](assets/) | Icons used in the application. |
+| [docs/](docs/) | Help and setup guides. |
+| [engines/](engines/) | Waveform conversion, screening, filtering and quality-check routines. |
+| [runtime/](runtime/) | Python and R setup files and package lists. |
+| [signalqc/](signalqc/) | Application interface and processing controls. |
+| [test/](test/) | Example recordings, settings and reference results. |
+| [.gitattributes](.gitattributes) | File-handling settings for Git. |
+| [.gitignore](.gitignore) | Rules excluding temporary and generated files from the repository. |
+| [Check SignalQC.py](Check%20SignalQC.py) | Startup and environment checks. |
+| [Check SignalQC.pyw](Check%20SignalQC.pyw) | The same checks without a console window. |
+| [Launch SignalQC - Installed Python and R.py](Launch%20SignalQC%20-%20Installed%20Python%20and%20R.py) | Setup and launch using your installed Python and R. |
+| [Launch SignalQC.cmd](Launch%20SignalQC.cmd) | Windows launcher for the complete portable package. |
+| [Launch SignalQC.py](Launch%20SignalQC.py) | Python launcher for the application. |
+| [Launch SignalQC.pyw](Launch%20SignalQC.pyw) | Python launcher without a console window. |
+| [README.md](README.md) | Main application guide. |
+| [S1.xlsx](S1.xlsx) | Supplementary model inputs, labels, predictions and evaluation data. |
+| [START HERE.txt](START%20HERE.txt) | Brief instructions for starting the app and running the example. |
+| [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | Credits and licenses for third-party components. |
+| [app.py](app.py) | Main application startup script. |
+| [requirements-python311.txt](requirements-python311.txt) | Python 3.11 package versions. |
+| [requirements.txt](requirements.txt) | Required Python packages. |
+
 ## Start here
 
 **[Download the complete Windows app](https://github.com/mohtamer/SignalQC/releases/download/v2026.11.03.2/SignalQC_Public_2026-11-03_2.zip)** for offline use. Extract it, open **Launch SignalQC.cmd**, and press **Run example** on the **Overview** screen.
