@@ -36,7 +36,7 @@ Repository: [github.com/mohtamer/SignalQC](https://github.com/mohtamer/SignalQC)
 
 ## Start here
 
-**[Download the complete Windows app](https://github.com/mohtamer/SignalQC/releases/download/v2026.11.03.2/SignalQC_Public_2026-11-03_2.zip)** for offline use. Extract it, open **Launch SignalQC.cmd**, and press **Run example** on the **Overview** screen.
+**[Download the complete Windows app](https://github.com/mohtamer/SignalQC/releases/download/v2026.11.14/SignalQC_Public_2026-11-14.zip)** for offline use. Extract it, open **Launch SignalQC.cmd**, and press **Run example** on the **Overview** screen.
 
 | Package | How to open it | What you need |
 |---|---|---|

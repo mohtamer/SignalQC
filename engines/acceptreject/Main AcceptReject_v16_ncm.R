@@ -553,14 +553,18 @@ mag[j] = event_mag
                   acrj[4] = AR[[2]]
                   score[4] = round(AR[[1]],2)
 
+                  # Five Accept votes are required; four Reject votes make
+                  # acceptance impossible, including after the first four methods.
                   # Option=9 NCM NN
+                  if(sum(na.omit(acrj)==1)<5 & sum(na.omit(acrj)==0)<4){
                   method_states[8] <- "executed"
                   AR = ARF(accts.trm, max(parr.trm,3), Option=9,magnitude,hypdist)
                   acrj[8] = AR[[2]]
                   score[8] = round(AR[[1]],2)
+                  }
 
                   #Option=8 Support Vector, NGA-W3, Kishida et al.
-              	if(sum(na.omit(acrj)==1)<5 & sum(na.omit(acrj)==0)<5){
+              	if(sum(na.omit(acrj)==1)<5 & sum(na.omit(acrj)==0)<4){
               	method_states[7] <- "executed"
                   AR = ARF(accts.trm, max(parr.trm,3), Option=8,magnitude,hypdist)
               	acrj[7] = AR[[2]]
@@ -568,7 +572,7 @@ mag[j] = event_mag
               	}
 
               	#Option=7 Booted Tree, NGA-W3, Kishida et al.
-              	if(sum(na.omit(acrj)==1)<5 & sum(na.omit(acrj)==0)<5){
+              	if(sum(na.omit(acrj)==1)<5 & sum(na.omit(acrj)==0)<4){
               	method_states[6] <- "executed"
                   AR = ARF(accts.trm, max(parr.trm,3), Option=7,magnitude,hypdist)
               	acrj[6] = AR[[2]]
@@ -576,7 +580,7 @@ mag[j] = event_mag
               	}
 
               	#Option=6 Bootstrap Forrest, NGA-W3, Kishida et al.
-              	if(sum(na.omit(acrj)==1)<5 & sum(na.omit(acrj)==0)<5){
+              	if(sum(na.omit(acrj)==1)<5 & sum(na.omit(acrj)==0)<4){
               	method_states[5] <- "executed"
                   AR = ARF(accts.trm, max(parr.trm,3), Option=6,magnitude,hypdist)
               	acrj[5] = AR[[2]]
